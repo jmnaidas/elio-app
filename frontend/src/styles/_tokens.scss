@@ -1,0 +1,36 @@
+$navigation-breakpoint: 960px;
+:root {
+  --color-mist: #d1dede;
+  --color-keylime: #eef4ce;
+  --color-slate: #4d5c60;
+  --color-primary: #525266;
+  --color-text: #383838;
+  --color-canvas: #fafaf7;
+  --color-surface: #ffffff;
+  --color-subtle: #f2f3ef;
+  --color-muted: #626963;
+  --color-border: #e2e5de;
+  --color-success: #246247;
+  --color-warning: #855410;
+  --color-error: #a53435;
+  --font-sans: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-xs: 0.75rem;
+  --font-sm: 0.875rem;
+  --font-lg: 1.125rem;
+  --font-title: clamp(1.8rem, 3vw, 2.25rem);
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --border-subtle: 1px solid var(--color-border);
+  --shadow-soft: 0 2px 8px #38383805;
+  --content-width: 1160px;
+  --sidebar-width: 244px;
+}

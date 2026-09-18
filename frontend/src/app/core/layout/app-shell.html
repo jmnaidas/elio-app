@@ -1,0 +1,109 @@
+<a class="skip-link" href="#workspace">Skip to content</a>
+<div class="shell" [class.collapsed]="collapsed()">
+  <aside class="sidebar" aria-label="Workspace sidebar">
+    <a routerLink="/" class="brand" aria-label="ELIO home"
+      ><span class="brand-mark">e</span
+      ><span class="wordmark">elio<span class="brand-dot">.</span></span></a
+    >
+    <div class="workspace-label">
+      <span class="workspace-initial">E</span
+      ><span class="workspace-copy">Your workspace<small>Invoicing & receivables</small></span>
+    </div>
+    <ng-container [ngTemplateOutlet]="navigationTemplate" />
+    <div class="sidebar-bottom">
+      <a
+        class="nav-link"
+        routerLink="/settings"
+        routerLinkActive="active"
+        ariaCurrentWhenActive="page"
+        title="Settings"
+        ><app-icon name="settings" /><span class="nav-label">Settings</span></a
+      >
+      <div class="sidebar-footer">
+        <span class="footer-copy">A little more clarity.</span
+        ><button
+          class="icon-button collapse-button"
+          data-testid="collapse"
+          type="button"
+          (click)="collapsed.set(!collapsed())"
+          [attr.aria-label]="collapsed() ? 'Expand sidebar' : 'Collapse sidebar'"
+          [attr.aria-expanded]="!collapsed()"
+        >
+          <app-icon name="collapse" />
+        </button>
+      </div>
+    </div>
+  </aside>
+  <div class="main-column">
+    <header class="topbar">
+      <div class="header-left">
+        <button
+          class="icon-button mobile-toggle"
+          type="button"
+          aria-label="Open navigation"
+          aria-controls="mobile-navigation"
+          [attr.aria-expanded]="menuOpen()"
+          (click)="openMenu()"
+        >
+          <app-icon name="menu" /></button
+        ><span class="header-title">ELIO <span>/</span> Workspace</span>
+      </div>
+      <span class="foundation-label"><span class="status-dot"></span>Foundation preview</span>
+    </header>
+    <main id="workspace" #workspace tabindex="-1">
+      <div class="content"><router-outlet /></div>
+    </main>
+    <footer class="main-footer">
+      <span>Know what's due. Know what's next.</span><span>ELIO · Phase 0</span>
+    </footer>
+  </div>
+</div>
+<dialog
+  #drawer
+  id="mobile-navigation"
+  aria-label="Workspace navigation"
+  (close)="menuOpen.set(false)"
+  (cancel)="menuOpen.set(false)"
+  (click)="backdropClick($event)"
+>
+  <div class="drawer-content">
+    <div class="drawer-header">
+      <a routerLink="/" class="brand" aria-label="ELIO home" (click)="closeMenu()"
+        ><span class="brand-mark">e</span><span class="wordmark">elio.</span></a
+      ><button
+        type="button"
+        class="icon-button"
+        aria-label="Close navigation"
+        (click)="closeMenu()"
+      >
+        <app-icon name="close" />
+      </button>
+    </div>
+    <ng-container [ngTemplateOutlet]="navigationTemplate" />
+    <a
+      class="nav-link mobile-settings"
+      routerLink="/settings"
+      routerLinkActive="active"
+      ariaCurrentWhenActive="page"
+      (click)="closeMenu()"
+      ><app-icon name="settings" /><span>Settings</span></a
+    >
+    <p class="drawer-tagline">Know what's due.<br />Know what's next.</p>
+  </div>
+</dialog>
+<ng-template #navigationTemplate>
+  <nav aria-label="Main navigation">
+    @for (item of navigation; track item.path) {
+      <a
+        class="nav-link"
+        [routerLink]="item.path"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+        ariaCurrentWhenActive="page"
+        [title]="item.label"
+        (click)="closeMenu()"
+        ><app-icon [name]="item.icon" /><span class="nav-label">{{ item.label }}</span></a
+      >
+    }
+  </nav>
+</ng-template>

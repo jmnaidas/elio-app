@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup><UserSecretsId>elio-api-local-development</UserSecretsId></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Elio.Application/Elio.Application.csproj" />
+    <ProjectReference Include="../Elio.Infrastructure/Elio.Infrastructure.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+  </ItemGroup>
+</Project>
+
