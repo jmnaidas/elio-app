@@ -4,7 +4,7 @@
 
 ELIO — Exceptions · Ledger · Invoicing · Operations — is an invoicing and receivables workspace for small service businesses.
 
-**Status: Phase 0 foundation.** This repository contains a working application shell and API infrastructure. Authentication, business entities, financial workflows, PDFs and email delivery are intentionally not implemented. The interface contains no fake financial data.
+**Status: Phase 1 — Identity + Organization.** Real cookie authentication, email verification/recovery, organization onboarding, and Owner settings are implemented. Business modules remain placeholders, without fake financial data. Production email delivery and Phase 2 financial workflows are not implemented.
 
 ## Stack
 
@@ -22,9 +22,9 @@ backend/
   Elio.sln
   src/
     Elio.Api/                 HTTP pipeline and composition root
-    Elio.Application/         Future use cases; references Domain
-    Elio.Domain/              Future business rules; no dependencies
-    Elio.Infrastructure/      EF Core and dependency health checks
+    Elio.Application/         Account/organization contracts; references Domain
+    Elio.Domain/              Organization and membership rules; no dependencies
+    Elio.Infrastructure/      Identity, EF Core, migrations and email capture
   tests/
     Elio.UnitTests/
     Elio.IntegrationTests/
@@ -51,7 +51,7 @@ Run commands from the repository root unless otherwise stated.
 1. Configure PostgreSQL:
 
 ```powershell
-Copy-Item .env.example .env
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
 notepad .env
 docker compose up -d postgres
 docker compose ps
@@ -59,22 +59,29 @@ docker compose ps
 
 Use simple unquoted values in `.env` and replace the example password with a local value. Never commit `.env`. Compose reads this file; ASP.NET does not automatically read it.
 
-2. Start the API in its own terminal:
+PostgreSQL uses host port **5433** (container port 5432). Keep your existing `.env` and User Secrets; do not replace them when upgrading this checkout.
+
+2. Configure User Secrets only if this is a new checkout:
 
 ```powershell
-./infrastructure/start-api.ps1
+dotnet user-secrets set 'ConnectionStrings:Database' 'Host=127.0.0.1;Port=5433;Database=elio;Username=elio;Password=YOUR_LOCAL_PASSWORD;Timeout=5' --project backend/src/Elio.Api
 ```
 
-The helper reads `.env`, configures the connection string and runs the API at `http://localhost:5080`. It uses the ignored workspace SDK if present, otherwise installed `dotnet`.
-
-Alternatively, configure the connection string directly with an environment variable or .NET user secrets:
+3. Apply the migration, then start the API in its own terminal:
 
 ```powershell
-$env:ConnectionStrings__Database = 'Host=127.0.0.1;Port=5432;Database=elio;Username=elio;Password=YOUR_LOCAL_PASSWORD;Timeout=5'
+dotnet restore backend/Elio.sln
+Push-Location backend
+dotnet tool restore
+$env:ASPNETCORE_ENVIRONMENT = 'Development'
+dotnet tool run dotnet-ef database update --project src/Elio.Infrastructure --startup-project src/Elio.Api
+Pop-Location
 dotnet run --project backend/src/Elio.Api --launch-profile http
 ```
 
-3. Start Angular in another terminal:
+The existing `infrastructure/start-api.ps1` remains an alternative for `.env`-based configuration; it supplies an environment connection string instead of using User Secrets. Neither startup method applies migrations automatically.
+
+4. Start Angular in another terminal:
 
 ```powershell
 cd frontend
@@ -82,7 +89,9 @@ npm ci
 npm start
 ```
 
-Open `http://localhost:4200`. Angular proxies `/api/*` to the local API through `proxy.conf.json`, removing `/api`. The configurable API base URL lives in `src/environments/`; environment files are public build configuration, never secret storage. Production needs a same-origin `/api` reverse proxy and SPA fallback to index.html.
+Open `http://localhost:4200`. Angular proxies `/api/*` to the local API through `proxy.conf.json`, preserving `/api`. Production needs a same-origin `/api` reverse proxy and SPA fallback to index.html. Keep the API URL relative for Angular's XSRF protection.
+
+Register, open the matching verification link captured in ignored `artifacts/dev-mail/*.json`, click **Verify email**, and sign in to set up your organization. Forgot/reset password uses the same local email capture. Tokens expire after one hour and are never automatically confirmed. See [Phase 1 authentication, CSRF, tenancy and test details](docs/identity-and-organization.md).
 
 ## Health and OpenAPI
 
@@ -94,7 +103,7 @@ Invoke-RestMethod http://localhost:5080/openapi/v1.json
 
 - `/health`: 200 while the process is serving; does not require PostgreSQL.
 - `/health/ready`: 200 when PostgreSQL can be reached with configured credentials, otherwise 503. No schema is created.
-- `/openapi/v1.json`: development-only OpenAPI document. It has no business operations yet.
+- `/openapi/v1.json`: development-only OpenAPI document for health, account, and organization operations.
 - Responses carry `X-Correlation-ID`; errors include ProblemDetails correlation/trace metadata.
 
 ## Build and tests
@@ -118,13 +127,13 @@ $env:DOTNET_CLI_HOME = "$PWD/.tools/cli"
 $env:NUGET_PACKAGES = "$PWD/.tools/nuget"
 ```
 
-Integration tests default to an unreachable local database and verify that readiness fails honestly. To test real PostgreSQL success, set `ELIO_TEST_DATABASE` to a dedicated test connection string before running them. No migrations or business tables exist in Phase 0.
+Identity/organization integration tests require real PostgreSQL. They use `ELIO_TEST_DATABASE` or the API's existing User Secret, create an isolated schema, migrate it, and remove that test schema afterward. The role needs permission to create schemas. The separate readiness failure test retains its intentionally unreachable database unless `ELIO_TEST_DATABASE` is supplied.
 
 ## Architecture
 
 The API composes Application and Infrastructure. Application references Domain; Infrastructure references Application. Domain has no external dependencies. This is one application, not multiple services. Native EF Core, ASP.NET DI and Angular routing are used without custom repository or messaging frameworks.
 
-See [architecture decisions](docs/architecture.md) and [local infrastructure](infrastructure/README.md). Authentication, tenant data isolation and business behavior begin in later phases.
+See [architecture decisions](docs/architecture.md), [Phase 1 details](docs/identity-and-organization.md), and [local infrastructure](infrastructure/README.md). ELIO uses Identity HttpOnly cookies because this is a first-party browser application; there are no browser-stored JWTs. Every organization request validates a live membership. Business behavior begins in Phase 2.
 
 ## Stop local services
 

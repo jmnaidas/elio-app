@@ -3,6 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LineIcon } from '../../shared/ui/line-icon';
+import { SessionService, errorMessage } from '../auth/session';
 
 @Component({
   selector: 'app-shell',
@@ -11,6 +12,22 @@ import { LineIcon } from '../../shared/ui/line-icon';
   styleUrl: './app-shell.scss',
 })
 export class AppShell {
+  readonly session = inject(SessionService);
+  private readonly router = inject(Router);
+  readonly loggingOut = signal(false);
+  readonly logoutError = signal('');
+  async logout() {
+    this.loggingOut.set(true);
+    this.logoutError.set('');
+    try {
+      await this.session.logout();
+      await this.router.navigateByUrl('/login');
+    } catch (error) {
+      this.logoutError.set(errorMessage(error));
+    } finally {
+      this.loggingOut.set(false);
+    }
+  }
   readonly collapsed = signal(false);
   readonly menuOpen = signal(false);
   private readonly drawer = viewChild<ElementRef<HTMLDialogElement>>('drawer');
@@ -37,7 +54,8 @@ export class AppShell {
     this.menuOpen.set(true);
   }
   closeMenu() {
-    this.drawer()?.nativeElement.close();
+    const drawer = this.drawer()?.nativeElement;
+    if (drawer?.open) drawer.close();
     this.menuOpen.set(false);
   }
   backdropClick(event: MouseEvent) {

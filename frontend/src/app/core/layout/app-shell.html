@@ -7,7 +7,9 @@
     >
     <div class="workspace-label">
       <span class="workspace-initial">E</span
-      ><span class="workspace-copy">Your workspace<small>Invoicing & receivables</small></span>
+      ><span class="workspace-copy" [title]="session.organization()?.name ?? ''"
+        >{{ session.organization()?.name }}<small>Invoicing & receivables</small></span
+      >
     </div>
     <ng-container [ngTemplateOutlet]="navigationTemplate" />
     <div class="sidebar-bottom">
@@ -48,13 +50,23 @@
           <app-icon name="menu" /></button
         ><span class="header-title">ELIO <span>/</span> Workspace</span>
       </div>
-      <span class="foundation-label"><span class="status-dot"></span>Foundation preview</span>
+      <div class="account-menu">
+        <span class="account-email" [title]="session.user()?.email ?? ''">{{
+          session.user()?.email
+        }}</span
+        ><button type="button" class="text-button" [disabled]="loggingOut()" (click)="logout()">
+          {{ loggingOut() ? 'Signing out…' : 'Sign out' }}
+        </button>
+      </div>
     </header>
     <main id="workspace" #workspace tabindex="-1">
+      @if (logoutError()) {
+        <p class="form-error" role="alert">{{ logoutError() }}</p>
+      }
       <div class="content"><router-outlet /></div>
     </main>
     <footer class="main-footer">
-      <span>Know what's due. Know what's next.</span><span>ELIO · Phase 0</span>
+      <span>Know what's due. Know what's next.</span><span>ELIO</span>
     </footer>
   </div>
 </div>

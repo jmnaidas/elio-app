@@ -2,13 +2,20 @@ using System.Diagnostics;
 using Elio.Api.Errors;
 using Elio.Api.Middleware;
 using Elio.Infrastructure;
+using Elio.Api.Identity;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddOpenApi();
+builder.Services.AddIdentityApi(builder.Environment, builder.Configuration);
+builder.Services.AddOpenApi(options => options.AddOperationTransformer((operation, context, _) =>
+{
+    if (context.Description.RelativePath?.StartsWith("api/", StringComparison.Ordinal) == true)
+        operation.Description = "First-party cookie API. Keep cookies between requests. Before every mutation obtain GET /api/auth/antiforgery and send its requestToken as X-XSRF-TOKEN. Organization access requires a verified account and a live Owner membership. Errors use ProblemDetails.";
+    return Task.CompletedTask;
+}));
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
 {
@@ -20,6 +27,11 @@ var app = builder.Build();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
+app.UseApiCsrf();
+app.MapControllers();
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 static HealthCheckOptions HealthOptions(bool readiness) => new()
