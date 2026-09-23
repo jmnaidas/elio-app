@@ -4,7 +4,7 @@
 
 ELIO — Exceptions · Ledger · Invoicing · Operations — is an invoicing and receivables workspace for small service businesses.
 
-**Status: Phase 2 — Clients + Services.** Cookie authentication, verified organization onboarding, and settings are joined by tenant-scoped client management and a reusable service library. Both support search, editing, and deactivate/reactivate workflows. Invoices, payments, receivables, and other financial workflows remain future work; no fake financial data is shown.
+**Status: Phase 3 — Draft Invoice Engine.** Tenant-scoped clients and services now support draft invoice creation and editing, decimal-safe totals, ordered lines, and a live preview. Authentication, onboarding, settings, and catalog workflows are preserved. Finalization, invoice numbering, PDF, payments, and receivables remain future work; no fake financial data is shown.
 
 ## Stack
 
@@ -103,7 +103,7 @@ Invoke-RestMethod http://localhost:5080/openapi/v1.json
 
 - `/health`: 200 while the process is serving; does not require PostgreSQL.
 - `/health/ready`: 200 when PostgreSQL can be reached with configured credentials, otherwise 503. No schema is created.
-- `/openapi/v1.json`: development-only OpenAPI document for health, account, and organization operations.
+- `/openapi/v1.json`: development-only OpenAPI document for health, account, organization, catalog, and draft invoice operations.
 - Responses carry `X-Correlation-ID`; errors include ProblemDetails correlation/trace metadata.
 
 ## Build and tests
@@ -133,7 +133,7 @@ Identity/organization integration tests require real PostgreSQL. They use `ELIO_
 
 The API composes Application and Infrastructure. Application references Domain; Infrastructure references Application. Domain has no external dependencies. This is one application, not multiple services. Native EF Core, ASP.NET DI and Angular routing are used without custom repository or messaging frameworks.
 
-See [architecture decisions](docs/architecture.md), [Phase 1 details](docs/identity-and-organization.md), [Clients and Services](docs/clients-and-services.md), and [local infrastructure](infrastructure/README.md). ELIO uses Identity HttpOnly cookies because this is a first-party browser application; there are no browser-stored JWTs. Every organization request validates a live membership. Apply the new ClientsAndServices migration using the existing migration command before using Phase 2.
+See [architecture decisions](docs/architecture.md), [Phase 1 details](docs/identity-and-organization.md), [Clients and Services](docs/clients-and-services.md), [Draft Invoice Engine](docs/invoice-engine.md), and [local infrastructure](infrastructure/README.md). ELIO uses Identity HttpOnly cookies because this is a first-party browser application; there are no browser-stored JWTs. Every organization request validates a live membership. Apply all migrations, including DraftInvoices, using the existing migration command before using Phase 3.
 
 ## Stop local services
 

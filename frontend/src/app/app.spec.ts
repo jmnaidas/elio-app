@@ -9,6 +9,7 @@ import { AuthPage } from './features/auth/auth-page';
 import { Location } from '@angular/common';
 import { ClientsData } from './features/clients/clients-data';
 import { ServicesData } from './features/services/services-data';
+import { InvoicesData } from './features/invoices/invoices-data';
 
 function sessionMock(destination = '/') {
   return {
@@ -41,6 +42,7 @@ function setup(destination = '/') {
       { provide: SessionService, useValue: session },
       { provide: ClientsData, useValue: { list: vi.fn().mockResolvedValue([]) } },
       { provide: ServicesData, useValue: { list: vi.fn().mockResolvedValue([]) } },
+      { provide: InvoicesData, useValue: { list: vi.fn().mockResolvedValue([]) } },
     ],
   });
   return session;

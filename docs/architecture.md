@@ -17,6 +17,8 @@ Unit tests validate correlation input and organization rules. Integration tests 
 
 Architecture tests enforce project-reference boundaries. Frontend tests exercise session restoration, route guards, login/logout state, onboarding decisions, settings form versions, shell collapse and API-only correlation headers.
 
-See [Phase 1 identity and organization](identity-and-organization.md) for cookie/CSRF security, account email, tenancy, migrations, and production prerequisites. Financial business modules remain future work.
+See [Phase 1 identity and organization](identity-and-organization.md) for cookie/CSRF security, account email, tenancy, migrations, and production prerequisites. Finalized billing, payments, and receivables remain future work.
 
 Phase 2 adds organization-owned Client/Service entities, feature application contracts, EF-backed feature services, Member-protected controllers, and PostgreSQL tenant tests. A small shared catalog access helper revalidates membership; it is not a generic repository. All record lookups include the organization ID. See [Clients and Services](clients-and-services.md) for decimal precision, deactivation, API contracts, migration setup, and the future invoice snapshot boundary.
+
+Phase 3 adds the Invoice aggregate and InvoiceLines, with complete aggregate writes, server-authoritative decimal totals, and aggregate concurrency. It reuses the same membership/CSRF boundary and validates tenant ownership of referenced sources. Draft line values are independent copies; client display remains current master data. Angular uses feature-local data access and a single-page editor/preview with scaled-integer live calculations. See [Draft Invoice Engine](invoice-engine.md) for rounding, source behavior, migration, API, and the Phase 4 boundary.

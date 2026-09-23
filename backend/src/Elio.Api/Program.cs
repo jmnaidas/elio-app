@@ -13,7 +13,7 @@ builder.Services.AddIdentityApi(builder.Environment, builder.Configuration);
 builder.Services.AddOpenApi(options => options.AddOperationTransformer((operation, context, _) =>
 {
     if (context.Description.RelativePath?.StartsWith("api/", StringComparison.Ordinal) == true)
-        operation.Description = "First-party cookie API. Keep cookies between requests. Before every mutation obtain GET /api/auth/antiforgery and send its requestToken as X-XSRF-TOKEN. Client/service access requires a verified account and live organization membership; organization settings require Owner. Updates and status changes require the current version. Errors use ProblemDetails.";
+        operation.Description = "First-party cookie API. Keep cookies between requests. Before every mutation obtain GET /api/auth/antiforgery and send its requestToken as X-XSRF-TOKEN. Client/service/invoice access requires a verified account and live organization membership; organization settings require Owner. Updates and status changes require the current version. Errors use ProblemDetails.";
     return Task.CompletedTask;
 }));
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();

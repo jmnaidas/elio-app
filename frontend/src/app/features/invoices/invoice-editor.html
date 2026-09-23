@@ -1,0 +1,293 @@
+<div class="editor-heading">
+  <div>
+    <p class="eyebrow">INVOICES / DRAFT</p>
+    <h2 #title tabindex="-1">{{ record() ? 'Edit draft' : 'Create draft' }}</h2>
+  </div>
+  <button class="secondary-button" type="button" (click)="close()" [disabled]="busy()">
+    Back to invoices
+  </button>
+</div>
+@if (loading()) {
+  <p role="status">Loading clients and services…</p>
+}
+@if (sourceError()) {
+  <p class="form-error" role="alert">
+    {{ sourceError() }}
+    <button type="button" class="text-button" (click)="loadSources()">Retry sources</button>
+  </p>
+}
+@if (error()) {
+  <p class="form-error" role="alert">{{ error() }}</p>
+}
+@if (stale()) {
+  <p class="notice">
+    Your changes have not been saved. Reloading will replace them with the latest draft.
+    <button type="button" class="text-button" (click)="reload()" [disabled]="busy()">
+      Reload latest draft
+    </button>
+  </p>
+}
+@if (notice()) {
+  <p class="notice" role="status">{{ notice() }}</p>
+}
+<div class="invoice-workspace">
+  <form [formGroup]="form" (ngSubmit)="save()" [attr.aria-busy]="busy()">
+    <fieldset [disabled]="busy() || loading() || !!sourceError()" class="editor-fields">
+      <section class="panel">
+        <h3>Invoice details</h3>
+        <label for="invoice-client">Client</label>
+        <select id="invoice-client" formControlName="clientId" (change)="clientChanged()" required>
+          <option value="">Choose a client</option>
+          @if (missingClient()) {
+            <option [value]="record()!.clientId">
+              {{ record()!.clientName }} (inactive · retained)
+            </option>
+          }
+          @for (client of clients(); track client.id) {
+            <option [value]="client.id">{{ client.name }}</option>
+          }
+        </select>
+        @if (invalid('clientId')) {
+          <p class="field-error">Choose a client.</p>
+        }
+        @if (!loading() && !clients().length && !record()) {
+          <p class="field-help">Add an active client on the Clients page first.</p>
+        }
+        <label for="invoice-currency">Currency</label>
+        <select id="invoice-currency" formControlName="currency">
+          <option value="PHP">PHP · Philippine peso</option>
+          <option value="USD">USD · US dollar</option>
+        </select>
+        <p class="field-help">One currency per invoice. No automatic conversion.</p>
+        <div class="two-columns">
+          <div>
+            <label for="issue-date">Issue date</label
+            ><input id="issue-date" type="date" formControlName="issueDate" required />
+          </div>
+          <div>
+            <label for="due-date">Due date</label
+            ><input id="due-date" type="date" formControlName="dueDate" required />
+          </div>
+        </div>
+        @if (submitted() && dateError()) {
+          <p class="field-error">Enter valid dates. Due date must be on or after issue date.</p>
+        }
+      </section>
+      <section class="panel" formArrayName="lines">
+        <h3>Line items</h3>
+        <p class="field-help">
+          Use a saved service or write a manual line. Copied values remain editable.
+        </p>
+        @for (line of lines.controls; track line; let i = $index) {
+          <fieldset class="line-item" [formGroupName]="i">
+            <legend>Item {{ i + 1 }}</legend>
+            <label [for]="'service-' + i">Service <span class="field-help">(optional)</span></label>
+            <select [id]="'service-' + i" formControlName="serviceId" (change)="selectService(i)">
+              <option value="">Manual line</option>
+              @if (missingService(i)) {
+                <option [value]="line.controls.serviceId.value">
+                  Previously selected service (unavailable)
+                </option>
+              }
+              @for (service of services(); track service.id) {
+                <option
+                  [value]="service.id"
+                  [disabled]="service.currency !== form.controls.currency.value"
+                >
+                  {{ service.name }} · {{ service.currency
+                  }}{{
+                    service.currency !== form.controls.currency.value ? ' — currency mismatch' : ''
+                  }}
+                </option>
+              }
+            </select>
+            @if (mismatch(i)) {
+              <p class="field-error" role="alert">
+                Service currency must match the invoice. Choose a matching service or a manual line;
+                no conversion is applied.
+              </p>
+            }
+            <label [for]="'description-' + i">Description</label
+            ><textarea
+              [id]="'description-' + i"
+              formControlName="description"
+              rows="2"
+              maxlength="2000"
+              required
+            ></textarea>
+            @if (
+              line.controls.description.invalid &&
+              (submitted() || line.controls.description.touched)
+            ) {
+              <p class="field-error">Enter a description.</p>
+            }
+            <div class="two-columns">
+              <div>
+                <label [for]="'quantity-' + i">Quantity</label
+                ><input
+                  [id]="'quantity-' + i"
+                  inputmode="decimal"
+                  formControlName="quantity"
+                  required
+                />
+              </div>
+              <div>
+                <label [for]="'price-' + i">Unit price</label
+                ><input
+                  [id]="'price-' + i"
+                  inputmode="decimal"
+                  formControlName="unitPrice"
+                  required
+                />
+              </div>
+            </div>
+            @if ((submitted() || line.touched) && !lineTotal(i)) {
+              <p class="field-error">
+                Quantity must be positive (up to 6 digits and 4 decimals). Price must be
+                non-negative (up to 12 digits and 2 decimals). Line total must fit the supported
+                amount.
+              </p>
+            }
+            <div class="line-footer">
+              <strong>{{
+                lineTotal(i) === null
+                  ? '—'
+                  : (lineTotal(i) | currency: form.controls.currency.value : 'symbol' : '1.2-2')
+              }}</strong>
+              <div class="line-actions">
+                <button
+                  type="button"
+                  class="text-button"
+                  [attr.aria-label]="'Move item ' + (i + 1) + ' up'"
+                  [disabled]="i === 0"
+                  (click)="moveLine(i, -1)"
+                >
+                  Up</button
+                ><button
+                  type="button"
+                  class="text-button"
+                  [attr.aria-label]="'Move item ' + (i + 1) + ' down'"
+                  [disabled]="i === lines.length - 1"
+                  (click)="moveLine(i, 1)"
+                >
+                  Down</button
+                ><button
+                  type="button"
+                  class="text-button"
+                  [attr.aria-label]="'Remove item ' + (i + 1)"
+                  (click)="removeLine(i)"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </fieldset>
+        }
+        @if (!lines.length) {
+          <p class="field-error">Add at least one line.</p>
+        }
+        <button
+          type="button"
+          class="secondary-button"
+          [disabled]="lines.length >= 100"
+          (click)="addLine()"
+        >
+          Add line
+        </button>
+      </section>
+      <section class="panel">
+        <label for="invoice-notes">Notes <span class="field-help">(optional)</span></label
+        ><textarea id="invoice-notes" formControlName="notes" maxlength="4000" rows="3"></textarea>
+        <label for="payment-instructions"
+          >Payment instructions <span class="field-help">(optional)</span></label
+        ><textarea
+          id="payment-instructions"
+          formControlName="paymentInstructions"
+          maxlength="4000"
+          rows="3"
+        ></textarea>
+      </section>
+      @if (submitted() && total() === null) {
+        <p class="field-error">
+          Check line amounts. The invoice total cannot exceed 999999999999.99.
+        </p>
+      }
+      <div class="save-bar">
+        <button type="submit" class="primary-button" [disabled]="stale()">
+          {{ busy() ? 'Saving…' : 'Save draft' }}</button
+        ><span class="field-help">Draft only · editable after saving</span>
+      </div>
+    </fieldset>
+  </form>
+  <aside class="preview" aria-label="Live draft invoice preview">
+    <div class="paper">
+      <div class="paper-header">
+        <strong>{{ session.organization()?.name }}</strong
+        ><span class="draft-badge">DRAFT</span>
+      </div>
+      <h2>Invoice</h2>
+      <p class="field-help">{{ form.controls.currency.value }} · Draft preview</p>
+      <div class="billing">
+        <p class="eyebrow">BILL TO</p>
+        <strong>{{ previewClient()?.name || 'Choose a client' }}</strong>
+        <p>{{ previewClient()?.email }}</p>
+        <p class="preserve-lines">{{ previewClient()?.address }}</p>
+      </div>
+      <div class="paper-dates">
+        <div>
+          <span>Issued</span><strong>{{ form.controls.issueDate.value || '—' }}</strong>
+        </div>
+        <div>
+          <span>Due</span><strong>{{ form.controls.dueDate.value || '—' }}</strong>
+        </div>
+      </div>
+      <div class="preview-lines">
+        @for (line of lines.controls; track line; let i = $index) {
+          <div class="preview-line">
+            <div>
+              <strong>{{ line.controls.description.value || 'Item description' }}</strong>
+              <p>
+                {{ line.controls.quantity.value }} × {{ line.controls.unitPrice.value }}
+                {{ form.controls.currency.value }}
+              </p>
+            </div>
+            <strong>{{
+              lineTotal(i) === null
+                ? '—'
+                : (lineTotal(i) | currency: form.controls.currency.value : 'symbol' : '1.2-2')
+            }}</strong>
+          </div>
+        }
+      </div>
+      <div class="summary">
+        <span>Subtotal</span
+        ><strong>{{
+          total() === null
+            ? '—'
+            : (total() | currency: form.controls.currency.value : 'symbol' : '1.2-2')
+        }}</strong>
+      </div>
+      <div class="summary grand-total">
+        <span>Total</span
+        ><strong>{{
+          total() === null
+            ? '—'
+            : (total() | currency: form.controls.currency.value : 'symbol' : '1.2-2')
+        }}</strong>
+      </div>
+      @if (form.controls.notes.value) {
+        <div class="paper-note">
+          <h3>Notes</h3>
+          <p class="preserve-lines">{{ form.controls.notes.value }}</p>
+        </div>
+      }
+      @if (form.controls.paymentInstructions.value) {
+        <div class="paper-note">
+          <h3>Payment instructions</h3>
+          <p class="preserve-lines">{{ form.controls.paymentInstructions.value }}</p>
+        </div>
+      }
+      <p class="draft-footnote">Draft · not finalized</p>
+    </div>
+  </aside>
+</div>

@@ -3,7 +3,7 @@ using Elio.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 namespace Elio.Infrastructure.Catalog;
 
-// Shared tenant boundary for the two master-data features, independent of HTTP policies.
+// Shared tenant boundary for catalog and draft invoice features, independent of HTTP policies.
 public sealed class CatalogAccess(ICurrentOrganization current, ElioDbContext database)
 {
     public async Task<Guid> OrganizationAsync()
