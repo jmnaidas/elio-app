@@ -4,7 +4,7 @@
 
 ELIO — Exceptions · Ledger · Invoicing · Operations — is an invoicing and receivables workspace for small service businesses.
 
-**Status: Phase 1 — Identity + Organization.** Real cookie authentication, email verification/recovery, organization onboarding, and Owner settings are implemented. Business modules remain placeholders, without fake financial data. Production email delivery and Phase 2 financial workflows are not implemented.
+**Status: Phase 2 — Clients + Services.** Cookie authentication, verified organization onboarding, and settings are joined by tenant-scoped client management and a reusable service library. Both support search, editing, and deactivate/reactivate workflows. Invoices, payments, receivables, and other financial workflows remain future work; no fake financial data is shown.
 
 ## Stack
 
@@ -133,7 +133,7 @@ Identity/organization integration tests require real PostgreSQL. They use `ELIO_
 
 The API composes Application and Infrastructure. Application references Domain; Infrastructure references Application. Domain has no external dependencies. This is one application, not multiple services. Native EF Core, ASP.NET DI and Angular routing are used without custom repository or messaging frameworks.
 
-See [architecture decisions](docs/architecture.md), [Phase 1 details](docs/identity-and-organization.md), and [local infrastructure](infrastructure/README.md). ELIO uses Identity HttpOnly cookies because this is a first-party browser application; there are no browser-stored JWTs. Every organization request validates a live membership. Business behavior begins in Phase 2.
+See [architecture decisions](docs/architecture.md), [Phase 1 details](docs/identity-and-organization.md), [Clients and Services](docs/clients-and-services.md), and [local infrastructure](infrastructure/README.md). ELIO uses Identity HttpOnly cookies because this is a first-party browser application; there are no browser-stored JWTs. Every organization request validates a live membership. Apply the new ClientsAndServices migration using the existing migration command before using Phase 2.
 
 ## Stop local services
 

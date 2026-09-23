@@ -7,6 +7,8 @@ import { SessionService } from './core/auth/session';
 import { signal } from '@angular/core';
 import { AuthPage } from './features/auth/auth-page';
 import { Location } from '@angular/common';
+import { ClientsData } from './features/clients/clients-data';
+import { ServicesData } from './features/services/services-data';
 
 function sessionMock(destination = '/') {
   return {
@@ -34,7 +36,12 @@ function sessionMock(destination = '/') {
 function setup(destination = '/') {
   const session = sessionMock(destination);
   TestBed.configureTestingModule({
-    providers: [provideRouter(routes), { provide: SessionService, useValue: session }],
+    providers: [
+      provideRouter(routes),
+      { provide: SessionService, useValue: session },
+      { provide: ClientsData, useValue: { list: vi.fn().mockResolvedValue([]) } },
+      { provide: ServicesData, useValue: { list: vi.fn().mockResolvedValue([]) } },
+    ],
   });
   return session;
 }

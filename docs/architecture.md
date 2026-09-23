@@ -9,7 +9,7 @@
 - Unexpected exceptions and empty HTTP errors use ProblemDetails with correlation metadata. Secrets do not belong in error responses.
 - OpenAPI JSON is exposed only in Development at `/openapi/v1.json`. Account and organization endpoints are documented there.
 - Angular is standalone with lazy feature routes and a central Signals session service. Native dialog supplies modal navigation focus handling. Locally, `/api/*` is proxied to ASP.NET with the prefix preserved. Production must supply an equivalent same-origin proxy for cookie and XSRF handling.
-- Shared SCSS tokens establish a light neutral base, restrained Amethyst, selected Keylime highlights and distinct semantic colors. No business components, charts or seeded financial data exist.
+- Shared SCSS tokens establish a light neutral base, restrained Amethyst, selected Keylime highlights and distinct semantic colors. Clients and Services use responsive lists and native detail/edit dialogs. There are no charts or seeded financial data.
 
 ## Test boundaries
 
@@ -18,3 +18,5 @@ Unit tests validate correlation input and organization rules. Integration tests 
 Architecture tests enforce project-reference boundaries. Frontend tests exercise session restoration, route guards, login/logout state, onboarding decisions, settings form versions, shell collapse and API-only correlation headers.
 
 See [Phase 1 identity and organization](identity-and-organization.md) for cookie/CSRF security, account email, tenancy, migrations, and production prerequisites. Financial business modules remain future work.
+
+Phase 2 adds organization-owned Client/Service entities, feature application contracts, EF-backed feature services, Member-protected controllers, and PostgreSQL tenant tests. A small shared catalog access helper revalidates membership; it is not a generic repository. All record lookups include the organization ID. See [Clients and Services](clients-and-services.md) for decimal precision, deactivation, API contracts, migration setup, and the future invoice snapshot boundary.

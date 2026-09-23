@@ -1,0 +1,240 @@
+:host {
+  display: block;
+}
+.page-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+.page-top .primary-button {
+  margin: 0;
+  white-space: nowrap;
+}
+.toolbar {
+  display: flex;
+  align-items: end;
+  gap: 16px;
+  padding: 20px;
+  background: var(--color-surface);
+  border: var(--border-subtle);
+  border-radius: 12px 12px 0 0;
+}
+.toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.search {
+  flex: 1;
+  max-width: 480px;
+}
+.toolbar input,
+.toolbar select {
+  min-height: 44px;
+  width: 100%;
+}
+.secondary-button {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: var(--border-subtle);
+  border-radius: 6px;
+  background: white;
+}
+.table-wrap {
+  border: var(--border-subtle);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  background: white;
+  overflow: hidden;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+th {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: var(--color-canvas);
+}
+th,
+td {
+  padding: 16px 20px;
+  border-bottom: var(--border-subtle);
+}
+td {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+tr:last-child td {
+  border-bottom: 0;
+}
+.row-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  color: var(--color-primary);
+  font-weight: 650;
+  text-decoration: underline;
+}
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--color-keylime);
+  font-size: 11px;
+  color: var(--color-text);
+}
+.badge.inactive {
+  background: var(--color-subtle);
+  color: var(--color-muted);
+}
+.empty {
+  text-align: center;
+  padding: 56px 24px;
+  border: var(--border-subtle);
+  background: white;
+  border-radius: 0 0 12px 12px;
+}
+.empty h2 {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+.empty p,
+.count {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.count {
+  margin-top: 12px;
+}
+.mobile-list {
+  display: none;
+}
+dialog {
+  width: min(600px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+  padding: 28px;
+  border: var(--border-subtle);
+  border-radius: 12px;
+  color: var(--color-text);
+  background: white;
+}
+dialog::backdrop {
+  background: #25252d66;
+}
+.editor-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.editor-top h2 {
+  font-size: 22px;
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.editor-form label {
+  font-weight: 600;
+  font-size: 13px;
+  margin-top: 12px;
+}
+.editor-form input,
+.editor-form select,
+.editor-form textarea {
+  width: 100%;
+  min-height: 44px;
+}
+.editor-form textarea {
+  resize: vertical;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+.actions .primary-button {
+  margin: 0;
+}
+.status-section {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: var(--border-subtle);
+}
+.confirm-box {
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--color-subtle);
+  border-radius: 6px;
+}
+.confirm-box p {
+  margin-bottom: 12px;
+}
+.record-meta {
+  margin-top: 16px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+@media (max-width: 700px) {
+  .page-top {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .toolbar {
+    flex-wrap: wrap;
+    padding: 16px;
+    gap: 12px;
+  }
+  .search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .table-wrap {
+    display: none;
+  }
+  .mobile-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .record-card {
+    background: white;
+    border: var(--border-subtle);
+    border-radius: 8px;
+    padding: 18px;
+    overflow-wrap: anywhere;
+  }
+  .card-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .record-card p {
+    color: var(--color-muted);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  dialog {
+    padding: 20px;
+  }
+}

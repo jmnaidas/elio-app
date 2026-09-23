@@ -69,15 +69,17 @@ public sealed class ApiTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public void Database_model_contains_only_identity_and_organization_foundation()
+    public void Database_model_contains_only_identity_organization_and_master_data()
     {
         using var scope = factory.Services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<ElioDbContext>();
         var names = database.Model.GetEntityTypes().Select(x => x.ClrType.Name).ToArray();
-        Assert.Equal(9, names.Length);
+        Assert.Equal(11, names.Length);
         Assert.Contains("Organization", names);
         Assert.Contains("Membership", names);
-        Assert.DoesNotContain(names, x => x.Contains("Invoice") || x.Contains("Client") || x.Contains("Payment"));
+        Assert.Contains("Client", names);
+        Assert.Contains("Service", names);
+        Assert.DoesNotContain(names, x => x.Contains("Invoice") || x.Contains("Payment"));
         Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", database.Database.ProviderName);
     }
 }

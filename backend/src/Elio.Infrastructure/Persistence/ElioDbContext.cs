@@ -10,9 +10,12 @@ public sealed class ElioDbContext(DbContextOptions<ElioDbContext> options) : Ide
 {
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<Membership> Memberships => Set<Membership>();
+    public DbSet<Elio.Domain.Clients.Client> Clients => Set<Elio.Domain.Clients.Client>();
+    public DbSet<Elio.Domain.Services.Service> Services => Set<Elio.Domain.Services.Service>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.ApplyConfigurationsFromAssembly(typeof(ElioDbContext).Assembly);
         builder.Entity<ApplicationUser>().HasIndex(x => x.NormalizedEmail).IsUnique();
         builder.Entity<Organization>(entity =>
         {
