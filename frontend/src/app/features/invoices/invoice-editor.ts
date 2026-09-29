@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
+import { FinalizedInvoice } from './finalized-invoice';
 import { ClientsData, ClientRecord } from '../clients/clients-data';
 import { ServicesData, ServiceRecord } from '../services/services-data';
 import { SessionService, errorMessage } from '../../core/auth/session';
@@ -18,7 +19,7 @@ import { lineCents, money, maxCents, pricePattern, quantityPattern } from './inv
 
 @Component({
   selector: 'app-invoice-editor',
-  imports: [ReactiveFormsModule, CurrencyPipe],
+  imports: [ReactiveFormsModule, CurrencyPipe, FinalizedInvoice],
   templateUrl: './invoice-editor.html',
   styleUrl: './invoice-editor.scss',
 })
@@ -26,6 +27,8 @@ export class InvoiceEditor {
   readonly initial = input<InvoiceRecord | null>(null);
   readonly closed = output<void>();
   readonly changed = output<void>();
+  readonly issued = output<InvoiceRecord>();
+  readonly confirming = signal(false);
   private readonly data = inject(InvoicesData);
   private readonly clientData = inject(ClientsData);
   private readonly serviceData = inject(ServicesData);
@@ -68,8 +71,8 @@ export class InvoiceEditor {
     });
     afterNextRender(() => {
       this.apply(this.initial());
-      this.title().nativeElement.focus();
-      void this.loadSources();
+      if (this.record()?.lifecycle === 'Finalized') this.loading.set(false);
+      else { this.title().nativeElement.focus(); void this.loadSources(); }
     });
   }
   private lineForm(line?: InvoiceLineInput) {
@@ -236,6 +239,7 @@ export class InvoiceEditor {
     return field?.invalid && (field.touched || this.submitted());
   }
   async save() {
+    if (this.record()?.lifecycle === 'Finalized') return;
     this.submitted.set(true);
     this.form.markAllAsTouched();
     this.error.set('');
@@ -280,7 +284,8 @@ export class InvoiceEditor {
       this.apply(await this.data.get(this.record()!.id));
       this.stale.set(false);
       this.error.set('');
-      await this.loadSources();
+      this.confirming.set(false);
+      if (this.record()?.lifecycle !== 'Finalized') await this.loadSources();
     } catch (error) {
       this.handle(error);
     } finally {
@@ -291,6 +296,20 @@ export class InvoiceEditor {
     if (this.busy()) return;
     if (this.form.dirty && !window.confirm('Discard unsaved draft changes?')) return;
     this.closed.emit();
+  }
+  requestFinalization() {
+    if (this.busy() || this.stale() || this.form.dirty || this.record()?.lifecycle !== 'Draft') return;
+    this.confirming.set(true);
+  }
+  async finalize() {
+    const record = this.record();
+    if (!record || record.lifecycle !== 'Draft' || !this.confirming() || this.busy() || this.form.dirty || this.stale()) return;
+    this.busy.set(true); this.error.set('');
+    try {
+      const issued = await this.data.finalize(record);
+      this.apply(issued); this.confirming.set(false); this.changed.emit(); this.issued.emit(issued);
+    } catch (error) { this.handle(error); }
+    finally { this.busy.set(false); }
   }
   private handle(error: unknown) {
     this.error.set(errorMessage(error));

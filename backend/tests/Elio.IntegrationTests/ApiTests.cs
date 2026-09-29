@@ -74,7 +74,7 @@ public sealed class ApiTests : IClassFixture<ApiFactory>
         using var scope = factory.Services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<ElioDbContext>();
         var names = database.Model.GetEntityTypes().Select(x => x.ClrType.Name).ToArray();
-        Assert.Equal(13, names.Length);
+        Assert.Equal(14, names.Length);
         Assert.Contains("Organization", names);
         Assert.Contains("Membership", names);
         Assert.Contains("Client", names);
@@ -83,7 +83,9 @@ public sealed class ApiTests : IClassFixture<ApiFactory>
         Assert.Contains("InvoiceLine", names);
         Assert.DoesNotContain(names, x => x.Contains("Payment"));
         var invoice = database.Model.FindEntityType(typeof(Elio.Domain.Invoices.Invoice))!;
-        Assert.DoesNotContain(invoice.GetProperties(), x => x.Name.Contains("Number") || x.Name.Contains("Snapshot"));
+        Assert.Contains("InvoiceSequence", names);
+        Assert.NotNull(invoice.FindProperty("InvoiceNumber"));
+        Assert.NotNull(invoice.FindProperty("FinalizedAtUtc"));
         Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", database.Database.ProviderName);
     }
 }

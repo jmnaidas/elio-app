@@ -36,6 +36,11 @@ export const routes: Routes = [
           import('./features/dashboard/dashboard-page').then((m) => m.DashboardPage),
       },
       {
+        path: 'invoices/:id',
+        title: 'Invoice · ELIO',
+        loadComponent: () => import('./features/invoices/invoices-page').then((m) => m.InvoicesPage),
+      },
+      {
         path: 'invoices',
         title: 'Invoices · ELIO',
         loadComponent: () =>

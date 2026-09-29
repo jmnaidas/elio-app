@@ -29,7 +29,12 @@ export interface InvoiceRecord extends Omit<InvoiceInput, 'notes' | 'paymentInst
   clientEmail: string;
   billingAddress: string | null;
   clientIsActive: boolean;
-  lifecycle: 'Draft';
+  lifecycle: 'Draft' | 'Finalized';
+  invoiceNumber?: string | null;
+  finalizedAtUtc?: string | null;
+  sellerName?: string | null;
+  sellerTimeZone?: string | null;
+  clientPhone?: string | null;
   subtotal: string;
   total: string;
   createdAtUtc: string;
@@ -42,13 +47,19 @@ export class InvoicesData {
   private readonly http = inject(HttpClient);
   private readonly base = inject(API_BASE_URL);
   private readonly session = inject(SessionService);
-  list(search = '', currency = '') {
+  list(search = '', currency = '', status = '') {
     return firstValueFrom(
-      this.http.get<InvoiceRecord[]>(`${this.base}/invoices`, { params: { search, currency } }),
+      this.http.get<InvoiceRecord[]>(`${this.base}/invoices`, { params: { search, currency, ...(status ? { status } : {}) } }),
     );
   }
   get(id: string) {
     return firstValueFrom(this.http.get<InvoiceRecord>(`${this.base}/invoices/${id}`));
+  }
+  finalize(record: InvoiceRecord) {
+    return this.session.mutate<InvoiceRecord>(`/invoices/${record.id}/finalize`, { version: record.version });
+  }
+  pdf(id: string) {
+    return firstValueFrom(this.http.get(`${this.base}/invoices/${id}/pdf`, { responseType: 'blob' }));
   }
   save(input: InvoiceInput, id?: string) {
     return this.session.mutate<InvoiceRecord>(

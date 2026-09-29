@@ -27,10 +27,45 @@ public sealed class Invoice
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
     public Guid Version { get; private set; }
+    public long? SequenceValue { get; private set; }
+    public string? InvoiceNumber { get; private set; }
+    public DateTimeOffset? FinalizedAtUtc { get; private set; }
+    public string? SellerName { get; private set; }
+    public string? SellerTimeZone { get; private set; }
+    public string? IssuedClientName { get; private set; }
+    public string? IssuedClientEmail { get; private set; }
+    public string? IssuedClientPhone { get; private set; }
+    public string? IssuedBillingAddress { get; private set; }
+    public bool? IssuedClientIsActive { get; private set; }
+    public decimal? FinalizedSubtotal { get; private set; }
+    public decimal? FinalizedTotal { get; private set; }
     private readonly List<InvoiceLine> lines = [];
     public IReadOnlyCollection<InvoiceLine> Lines => lines.AsReadOnly();
-    public decimal Subtotal => lines.Sum(x => x.LineTotal);
-    public decimal Total => Subtotal;
+    public decimal Subtotal => FinalizedSubtotal ?? lines.Sum(x => x.LineTotal);
+    public decimal Total => FinalizedTotal ?? Subtotal;
+
+    public void FinalizeInvoice(long sequence, string sellerName, string sellerTimeZone,
+        string clientName, string clientEmail, string? clientPhone, string? billingAddress, bool clientIsActive)
+    {
+        if (Lifecycle != InvoiceLifecycle.Draft) throw new ArgumentException("This invoice is already finalized.");
+        if (sequence < 1) throw new ArgumentException("A positive invoice sequence is required.");
+        var seller = CatalogRules.Required(sellerName, 120, "Seller name");
+        var timeZone = CatalogRules.Required(sellerTimeZone, 100, "Seller time zone");
+        var name = CatalogRules.Required(clientName, 160, "Client name");
+        var email = CatalogRules.Required(clientEmail, 254, "Client email");
+        var phone = CatalogRules.Optional(clientPhone, 50, "Client phone");
+        var address = CatalogRules.Optional(billingAddress, 1000, "Billing address");
+        // Reuse complete draft validation/calculation, never trust stored derived line totals.
+        Update(ClientId, Currency, IssueDate, DueDate, Notes, PaymentInstructions,
+            lines.OrderBy(x => x.SortOrder).ThenBy(x => x.Id)
+                .Select(x => new DraftLine(x.Id, x.ServiceId, x.Description, x.Quantity, x.UnitPrice)).ToArray());
+        SellerName = seller; SellerTimeZone = timeZone; IssuedClientName = name; IssuedClientEmail = email;
+        IssuedClientPhone = phone; IssuedBillingAddress = address; IssuedClientIsActive = clientIsActive;
+        SequenceValue = sequence;
+        InvoiceNumber = "INV-" + sequence.ToString("D6", System.Globalization.CultureInfo.InvariantCulture);
+        FinalizedSubtotal = lines.Sum(x => x.LineTotal); FinalizedTotal = FinalizedSubtotal;
+        FinalizedAtUtc = UpdatedAtUtc; Lifecycle = InvoiceLifecycle.Finalized;
+    }
 
     public void Update(Guid clientId, string currency, DateOnly issueDate, DateOnly dueDate,
         string? notes, string? paymentInstructions, IReadOnlyList<DraftLine> input)

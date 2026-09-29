@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<Elio.Application.Clients.IClientService, Elio.Infrastructure.Clients.ClientService>();
         services.AddScoped<Elio.Application.Services.IServiceLibrary, Elio.Infrastructure.Services.ServiceLibrary>();
         services.AddScoped<Elio.Application.Invoices.IInvoiceService, Elio.Infrastructure.Invoices.InvoiceService>();
+        services.AddSingleton<Elio.Application.Invoices.IInvoicePdfGenerator, Elio.Infrastructure.Invoices.InvoicePdfGenerator>();
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgresql", tags: ["ready"], timeout: TimeSpan.FromSeconds(5));
         return services;
     }

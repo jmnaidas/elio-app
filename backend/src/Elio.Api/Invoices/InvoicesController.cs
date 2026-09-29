@@ -15,4 +15,14 @@ public sealed class InvoicesController(IInvoiceService service) : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
     }
     [HttpPatch("{id:guid}")] public Task<InvoiceDto> Update(Guid id, InvoiceRequest request) => service.UpdateAsync(id, request);
+    [HttpPost("{id:guid}/finalize")]
+    public Task<InvoiceDto> FinalizeInvoice(Guid id, FinalizeInvoiceRequest request) => service.FinalizeAsync(id, request.Version);
+    [HttpGet("{id:guid}/pdf"), Produces("application/pdf")]
+    public async Task<IActionResult> Pdf(Guid id)
+    {
+        var result = await service.PdfAsync(id);
+        Response.Headers.CacheControl = "private, no-store";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        return File(result.Bytes, "application/pdf", result.FileName);
+    }
 }

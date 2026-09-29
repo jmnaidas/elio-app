@@ -7,6 +7,10 @@ import { ClientsData } from '../clients/clients-data';
 import { ServicesData } from '../services/services-data';
 import { SessionService } from '../../core/auth/session';
 import { lineCents, money } from './invoice-calculations';
+import { FinalizedInvoice } from './finalized-invoice';
+import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 
 const record: InvoiceRecord = {
   id: 'invoice-1',
@@ -43,6 +47,8 @@ function setup() {
     list: vi.fn().mockResolvedValue([record]),
     get: vi.fn().mockResolvedValue(record),
     save: vi.fn().mockResolvedValue({ ...record, version: 'v2' }),
+    finalize: vi.fn().mockResolvedValue({ ...record, lifecycle: 'Finalized', invoiceNumber: 'INV-000001', sellerName: 'Issued studio', finalizedAtUtc: '2026-09-29T00:00:00Z', version: 'v3' }),
+    pdf: vi.fn().mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' })),
   };
   const clients = {
     list: vi.fn().mockResolvedValue([
@@ -316,5 +322,58 @@ describe('Draft invoice list', () => {
     expect(fixture.componentInstance.error()).toBeTruthy();
     await fixture.componentInstance.load();
     expect(fixture.componentInstance.error()).toBe('');
+  });
+});
+
+describe('Invoice finalization', () => {
+  const issued: InvoiceRecord = { ...record, lifecycle: 'Finalized', invoiceNumber: 'INV-000001', sellerName: 'Issued studio', finalizedAtUtc: '2026-09-29T00:00:00Z' };
+  it('requires explicit confirmation, supports cancellation, and transitions to a locked snapshot', async () => {
+    const { page, data, fixture } = await editor(record);
+    const button = (name: string) => Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(x => x.textContent?.trim() === name)!;
+    button('Finalize Invoice').click(); await fixture.whenStable();
+    expect(data.finalize).not.toHaveBeenCalled(); expect(fixture.nativeElement.textContent).toContain('cannot be edited afterward');
+    button('Keep as draft').click(); await fixture.whenStable(); expect(page.confirming()).toBe(false);
+    button('Finalize Invoice').click(); await fixture.whenStable(); button('Confirm finalization').click(); await fixture.whenStable();
+    expect(data.finalize).toHaveBeenCalledWith(record); expect(fixture.nativeElement.textContent).toContain('INV-000001');
+    expect(fixture.nativeElement.textContent).toContain('Issued studio'); expect(fixture.nativeElement.querySelector('form')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Save draft'); expect(fixture.nativeElement.textContent).toContain('Download PDF');
+    await page.save(); expect(data.save).not.toHaveBeenCalled();
+  });
+  it('requires saving unsaved edits before issuing a permanent invoice', async () => {
+    const { page, data } = await editor(record); page.form.controls.notes.setValue('Unsaved'); page.form.markAsDirty();
+    page.requestFinalization(); await page.finalize(); expect(page.confirming()).toBe(false); expect(data.finalize).not.toHaveBeenCalled();
+  });
+  it('preserves draft state after a finalization error and reloads a competing finalized result', async () => {
+    const { page, data, fixture } = await editor(record); data.finalize.mockRejectedValue(new HttpErrorResponse({ status: 409, error: { title: 'This invoice changed.' } }));
+    page.requestFinalization(); await page.finalize(); await fixture.whenStable(); expect(page.record()?.lifecycle).toBe('Draft');
+    expect(page.stale()).toBe(true); expect(fixture.nativeElement.textContent).toContain('This invoice changed.');
+    data.get.mockResolvedValue(issued); await page.reload(); await fixture.whenStable(); expect(fixture.nativeElement.querySelector('form')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('INV-000001');
+  });
+  it('renders finalized data without fetching current source records', async () => {
+    const { clients, services, fixture } = await editor(issued);
+    expect(clients.list).not.toHaveBeenCalled(); expect(services.list).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Issued studio'); expect(fixture.nativeElement.textContent).not.toContain('My studio');
+  });
+  it('downloads the authorized PDF with its invoice number and reports retrieval errors', async () => {
+    const { data } = setup(); const fixture = TestBed.createComponent(FinalizedInvoice); fixture.componentRef.setInput('invoice', issued); await fixture.whenStable();
+    const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:invoice');
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await fixture.componentInstance.download(); expect(data.pdf).toHaveBeenCalledWith('invoice-1'); expect(create).toHaveBeenCalled(); expect(click).toHaveBeenCalled();
+    data.pdf.mockRejectedValue(new HttpErrorResponse({ status: 500, error: { title: 'Unable to create PDF.' } })); await fixture.componentInstance.download(); await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Unable to create PDF.'); create.mockRestore(); click.mockRestore();
+  });
+  it('loads a finalized invoice from a refreshed detail route', async () => {
+    const { data } = setup(); data.get.mockResolvedValue(issued);
+    TestBed.configureTestingModule({ providers: [provideRouter([{ path: 'invoices/:id', component: InvoicesPage }])] });
+    const harness = await RouterTestingHarness.create('/invoices/invoice-1'); await harness.fixture.whenStable();
+    expect(data.get).toHaveBeenCalledWith('invoice-1'); expect(harness.routeNativeElement?.textContent).toContain('INV-000001');
+    expect(harness.routeNativeElement?.querySelector('form')).toBeNull();
+  });
+  it('shows both lifecycle states and submits the selected list filter', async () => {
+    const { data } = setup(); data.list.mockResolvedValue([record, { ...issued, id: 'invoice-2' }]);
+    const fixture = TestBed.createComponent(InvoicesPage); await fixture.whenStable(); expect(fixture.nativeElement.textContent).toContain('Finalized');
+    expect(fixture.nativeElement.textContent).toContain('INV-000001'); fixture.componentInstance.status = 'finalized'; await fixture.componentInstance.load();
+    expect(data.list).toHaveBeenLastCalledWith('', '', 'finalized');
   });
 });

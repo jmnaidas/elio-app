@@ -1,6 +1,13 @@
 :host {
   display: block;
 }
+.finalization { margin-bottom:24px; padding:18px; background:var(--color-surface); border:var(--border-subtle); border-radius:8px; }
+.finalization .primary-button, .issued-actions .primary-button { margin:0; }
+.confirm-issuance { margin-top:16px; }
+.confirm-issuance p { margin-bottom:12px; }
+.issued-actions { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
+.issued-paper { max-width:820px; margin:0 auto; }
+.issued-paper .preview-line { font-size:14px; }
 .editor-heading {
   display: flex;
   justify-content: space-between;

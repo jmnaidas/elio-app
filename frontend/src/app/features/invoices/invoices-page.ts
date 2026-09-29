@@ -10,6 +10,8 @@ import {
 } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PageHeader } from '../../shared/ui/page-header';
 import { errorMessage } from '../../core/auth/session';
 import { InvoicesData, InvoiceRecord } from './invoices-data';
@@ -22,23 +24,23 @@ import { InvoiceEditor } from './invoice-editor';
   template: `
     @if (editorOpen()) {
       <h1 class="sr-only">Invoices</h1>
-      <app-invoice-editor [initial]="selected()" (closed)="closeEditor()" (changed)="load()" />
+      <app-invoice-editor [initial]="selected()" (closed)="closeEditor()" (changed)="load()" (issued)="showIssued($event)" />
     } @else {
       <div class="page-top">
         <app-page-header
           title="Invoices"
-          description="Prepare clear, accurate drafts at your own pace."
+          description="Prepare drafts and keep issued invoices together."
         /><button #addButton type="button" class="primary-button" (click)="add()">
           Create draft
         </button>
       </div>
       <form class="toolbar" (ngSubmit)="load()">
         <label class="search"
-          >Search clients<input
+          >Search invoices<input
             type="search"
             name="search"
             [(ngModel)]="search"
-            placeholder="Client name or email"
+            placeholder="Client name, email, or invoice number"
             maxlength="160"
         /></label>
         <label
@@ -48,6 +50,7 @@ import { InvoiceEditor } from './invoice-editor';
             <option value="USD">USD</option>
           </select></label
         >
+        <label>Status<select name="status" [(ngModel)]="status" (ngModelChange)="load()"><option value="">All statuses</option><option value="draft">Draft</option><option value="finalized">Finalized</option></select></label>
         <button type="submit" class="secondary-button">Search</button>
       </form>
       @if (error()) {
@@ -56,15 +59,15 @@ import { InvoiceEditor } from './invoice-editor';
         </p>
       }
       @if (loading()) {
-        <p class="empty" role="status">Loading drafts…</p>
+        <p class="empty" role="status">Loading invoices…</p>
       } @else if (!error() && !items().length) {
         <section class="empty">
           <h2>
-            {{ search || currency ? 'No matching drafts' : 'Your first invoice starts here' }}
+            {{ search || currency || status ? 'No matching invoices' : 'Your first invoice starts here' }}
           </h2>
           <p>
             {{
-              search || currency
+              search || currency || status
                 ? 'Try another client or currency.'
                 : 'Create a draft with a client and the work you are billing for.'
             }}
@@ -74,11 +77,11 @@ import { InvoiceEditor } from './invoice-editor';
         <div class="table-wrap">
           <table>
             <caption class="sr-only">
-              Draft invoices
+              Invoices
             </caption>
             <thead>
               <tr>
-                <th>Client</th>
+                <th>Invoice / Client</th>
                 <th>Issue date</th>
                 <th>Due date</th>
                 <th>Amount</th>
@@ -92,14 +95,15 @@ import { InvoiceEditor } from './invoice-editor';
                 <tr>
                   <td>
                     <button class="row-link" type="button" (click)="edit(item)">
-                      {{ item.clientName }}
+                      {{ item.invoiceNumber || item.clientName }}
                     </button>
+                    @if (item.invoiceNumber) { <p>{{ item.clientName }}</p> }
                   </td>
                   <td>{{ item.issueDate }}</td>
                   <td>{{ item.dueDate }}</td>
                   <td>{{ item.total | currency: item.currency : 'symbol' : '1.2-2' }}</td>
                   <td>{{ item.currency }}</td>
-                  <td><span class="badge">Draft</span></td>
+                  <td><span class="badge">{{ item.lifecycle }}</span></td>
                   <td>{{ item.updatedAtUtc | date: 'mediumDate' }}</td>
                 </tr>
               }
@@ -111,9 +115,10 @@ import { InvoiceEditor } from './invoice-editor';
             <article class="record-card">
               <div class="card-title">
                 <button class="row-link" type="button" (click)="edit(item)">
-                  {{ item.clientName }}</button
-                ><span class="badge">Draft</span>
+                  {{ item.invoiceNumber || item.clientName }}</button
+                ><span class="badge">{{ item.lifecycle }}</span>
               </div>
+              @if (item.invoiceNumber) { <p>{{ item.clientName }}</p> }
               <strong
                 >{{ item.total | currency: item.currency : 'symbol' : '1.2-2' }}
                 {{ item.currency }}</strong
@@ -124,11 +129,11 @@ import { InvoiceEditor } from './invoice-editor';
           }
         </div>
         <p class="count" role="status">
-          {{ items().length }} {{ items().length === 1 ? 'draft' : 'drafts' }}
+          {{ items().length }} {{ items().length === 1 ? 'invoice' : 'invoices' }}
         </p>
       }
       @if (opening()) {
-        <p role="status">Opening draft…</p>
+        <p role="status">Opening invoice…</p>
       }
     }
   `,
@@ -137,6 +142,8 @@ export class InvoicesPage {
   private readonly data = inject(InvoicesData);
   private readonly destroy = inject(DestroyRef);
   private readonly injector = inject(Injector);
+  private readonly router = inject(Router, { optional: true });
+  private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly addButton = viewChild<ElementRef<HTMLButtonElement>>('addButton');
   readonly items = signal<InvoiceRecord[]>([]);
   readonly loading = signal(false);
@@ -146,16 +153,21 @@ export class InvoicesPage {
   readonly selected = signal<InvoiceRecord | null>(null);
   search = '';
   currency = '';
+  status = '';
   private request = 0;
   constructor() {
     void this.load();
+    this.route?.paramMap.pipe(takeUntilDestroyed()).subscribe(params => {
+      const id = params.get('id');
+      if (id) void this.open(id);
+    });
   }
   async load() {
     const request = ++this.request;
     this.loading.set(true);
     this.error.set('');
     try {
-      const items = await this.data.list(this.search.trim(), this.currency);
+      const items = this.status ? await this.data.list(this.search.trim(), this.currency, this.status) : await this.data.list(this.search.trim(), this.currency);
       if (!this.destroy.destroyed && request === this.request) this.items.set(items);
     } catch (error) {
       if (!this.destroy.destroyed && request === this.request) this.error.set(errorMessage(error));
@@ -170,15 +182,23 @@ export class InvoicesPage {
     }
   }
   closeEditor() {
+    if (this.route?.snapshot.paramMap.get('id') && this.router) { void this.router.navigate(['/invoices']); return; }
     this.editorOpen.set(false);
     afterNextRender(() => this.addButton()?.nativeElement.focus(), { injector: this.injector });
   }
   async edit(item: InvoiceRecord) {
+    if (this.router && item.lifecycle === 'Finalized') { await this.router.navigate(['/invoices', item.id]); return; }
+    await this.open(item.id);
+  }
+  showIssued(item: InvoiceRecord) {
+    if (this.router && this.route?.snapshot.paramMap.get('id') !== item.id) void this.router.navigate(['/invoices', item.id]);
+  }
+  private async open(id: string) {
     if (this.opening()) return;
     this.opening.set(true);
     this.error.set('');
     try {
-      const current = await this.data.get(item.id);
+      const current = await this.data.get(id);
       if (!this.destroy.destroyed) {
         this.selected.set(current);
         this.editorOpen.set(true);

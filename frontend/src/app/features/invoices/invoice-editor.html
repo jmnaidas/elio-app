@@ -1,3 +1,6 @@
+@if (record()?.lifecycle === 'Finalized') {
+  <app-finalized-invoice [invoice]="record()!" (closed)="close()" />
+} @else {
 <div class="editor-heading">
   <div>
     <p class="eyebrow">INVOICES / DRAFT</p>
@@ -29,6 +32,19 @@
 }
 @if (notice()) {
   <p class="notice" role="status">{{ notice() }}</p>
+}
+@if (record()) {
+  <section class="finalization" aria-label="Finalize invoice">
+    <button type="button" class="primary-button" (click)="requestFinalization()" [disabled]="busy() || form.dirty || stale()">Finalize Invoice</button>
+    @if (form.dirty) { <p class="field-help">Save your changes before finalizing.</p> }
+    @if (confirming()) {
+      <div class="confirm-issuance" role="group" aria-label="Confirm finalization">
+        <p>A permanent invoice number will be assigned. The invoice will be locked and cannot be edited afterward.</p>
+        <button type="button" class="secondary-button" (click)="finalize()" [disabled]="busy() || form.dirty">{{ busy() ? 'Finalizing…' : 'Confirm finalization' }}</button>
+        <button type="button" class="text-button" (click)="confirming.set(false)" [disabled]="busy()">Keep as draft</button>
+      </div>
+    }
+  </section>
 }
 <div class="invoice-workspace">
   <form [formGroup]="form" (ngSubmit)="save()" [attr.aria-busy]="busy()">
@@ -291,3 +307,4 @@
     </div>
   </aside>
 </div>
+}

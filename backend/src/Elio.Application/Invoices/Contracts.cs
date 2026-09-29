@@ -2,7 +2,10 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 namespace Elio.Application.Invoices;
 
-public sealed record InvoiceQuery([MaxLength(160)] string? Search = null, string? Currency = null, Guid? ClientId = null);
+public sealed record InvoiceQuery([MaxLength(160)] string? Search = null, string? Currency = null, Guid? ClientId = null, string? Status = null);
+public sealed record FinalizeInvoiceRequest([Required] Guid? Version);
+public interface IInvoicePdfGenerator { byte[] Generate(InvoiceDto invoice); }
+public sealed record InvoicePdf(byte[] Bytes, string FileName);
 public sealed record InvoiceRequest(Guid ClientId, [Required] string Currency, DateOnly IssueDate, DateOnly DueDate,
     [MaxLength(4000)] string? Notes, [MaxLength(4000)] string? PaymentInstructions,
     [Required, MinLength(1), MaxLength(100)] InvoiceLineRequest[] Lines, Guid? Version = null);
@@ -15,11 +18,14 @@ public sealed record InvoiceLineDto(Guid Id, Guid? ServiceId, string Description
 public sealed record InvoiceDto(Guid Id, Guid ClientId, string ClientName, string ClientEmail, string? BillingAddress,
     bool ClientIsActive, string Currency, DateOnly IssueDate, DateOnly DueDate, string? Notes, string? PaymentInstructions,
     string Lifecycle, decimal Subtotal, decimal Total, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc,
-    Guid Version, IReadOnlyList<InvoiceLineDto> Lines);
+    Guid Version, IReadOnlyList<InvoiceLineDto> Lines, string? InvoiceNumber = null,
+    DateTimeOffset? FinalizedAtUtc = null, string? SellerName = null, string? SellerTimeZone = null, string? ClientPhone = null);
 public interface IInvoiceService
 {
     Task<IReadOnlyList<InvoiceDto>> ListAsync(InvoiceQuery query);
     Task<InvoiceDto> GetAsync(Guid id);
     Task<InvoiceDto> CreateAsync(InvoiceRequest request);
     Task<InvoiceDto> UpdateAsync(Guid id, InvoiceRequest request);
+    Task<InvoiceDto> FinalizeAsync(Guid id, Guid? version);
+    Task<InvoicePdf> PdfAsync(Guid id);
 }

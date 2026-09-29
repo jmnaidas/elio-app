@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 namespace Elio.IntegrationTests;
 
-public sealed class InvoiceTests(PostgresFactory factory) : IClassFixture<PostgresFactory>
+public sealed partial class InvoiceTests(PostgresFactory factory) : IClassFixture<PostgresFactory>
 {
     private static async Task<HttpResponseMessage> Send(HttpClient client, string path, object body, HttpMethod? method = null)
     {
@@ -94,7 +94,7 @@ public sealed class InvoiceTests(PostgresFactory factory) : IClassFixture<Postgr
         Assert.Equal(3, await db.InvoiceLines.CountAsync(x => x.InvoiceId == draft.Id));
         Assert.False(await db.InvoiceLines.AnyAsync(x => x.Id == read.Lines[2].Id));
         Assert.Equal(HttpStatusCode.MethodNotAllowed, (await Send(owner, path, new { }, HttpMethod.Delete)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await Send(owner, path + "/finalize", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(owner, path + "/send", new { })).StatusCode);
     }
     [Fact]
     public async Task Foreign_invoices_clients_services_and_line_ids_cannot_be_used()
