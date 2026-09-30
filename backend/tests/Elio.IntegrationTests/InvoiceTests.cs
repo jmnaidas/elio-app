@@ -94,7 +94,7 @@ public sealed partial class InvoiceTests(PostgresFactory factory) : IClassFixtur
         Assert.Equal(3, await db.InvoiceLines.CountAsync(x => x.InvoiceId == draft.Id));
         Assert.False(await db.InvoiceLines.AnyAsync(x => x.Id == read.Lines[2].Id));
         Assert.Equal(HttpStatusCode.MethodNotAllowed, (await Send(owner, path, new { }, HttpMethod.Delete)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await Send(owner, path + "/send", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(owner, path + "/payments", new { })).StatusCode);
     }
     [Fact]
     public async Task Foreign_invoices_clients_services_and_line_ids_cannot_be_used()

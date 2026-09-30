@@ -19,7 +19,7 @@ public sealed record InvoiceDto(Guid Id, Guid ClientId, string ClientName, strin
     bool ClientIsActive, string Currency, DateOnly IssueDate, DateOnly DueDate, string? Notes, string? PaymentInstructions,
     string Lifecycle, decimal Subtotal, decimal Total, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc,
     Guid Version, IReadOnlyList<InvoiceLineDto> Lines, string? InvoiceNumber = null,
-    DateTimeOffset? FinalizedAtUtc = null, string? SellerName = null, string? SellerTimeZone = null, string? ClientPhone = null);
+    DateTimeOffset? FinalizedAtUtc = null, string? SellerName = null, string? SellerTimeZone = null, string? ClientPhone = null, string DeliveryStatus = "NotSent", DateTimeOffset? LastSentAtUtc = null);
 public interface IInvoiceService
 {
     Task<IReadOnlyList<InvoiceDto>> ListAsync(InvoiceQuery query);

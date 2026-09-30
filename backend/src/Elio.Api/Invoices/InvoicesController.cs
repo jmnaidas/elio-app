@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace Elio.Api.Invoices;
 
 [ApiController, Route("api/invoices"), Authorize(Policy = "Member")]
-public sealed class InvoicesController(IInvoiceService service) : ControllerBase
+public sealed class InvoicesController(IInvoiceService service, IInvoiceDeliveryService deliveries) : ControllerBase
 {
+    [HttpPost("{id:guid}/send")] public Task<InvoiceDeliveryDto> Send(Guid id, SendInvoiceRequest request) => deliveries.SendAsync(id, request);
+    [HttpGet("{id:guid}/deliveries")] public Task<IReadOnlyList<InvoiceDeliveryDto>> Deliveries(Guid id) => deliveries.ListAsync(id);
     [HttpGet] public Task<IReadOnlyList<InvoiceDto>> List([FromQuery] InvoiceQuery query) => service.ListAsync(query);
     [HttpGet("{id:guid}")] public Task<InvoiceDto> Get(Guid id) => service.GetAsync(id);
     [HttpPost, ProducesResponseType<InvoiceDto>(StatusCodes.Status201Created)]

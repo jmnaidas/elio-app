@@ -50,7 +50,7 @@ import { InvoiceEditor } from './invoice-editor';
             <option value="USD">USD</option>
           </select></label
         >
-        <label>Status<select name="status" [(ngModel)]="status" (ngModelChange)="load()"><option value="">All statuses</option><option value="draft">Draft</option><option value="finalized">Finalized</option></select></label>
+        <label>Status<select name="status" [(ngModel)]="status" (ngModelChange)="load()"><option value="">All statuses</option><option value="draft">Draft</option><option value="finalized">Finalized</option><option value="sent">Sent</option></select></label>
         <button type="submit" class="secondary-button">Search</button>
       </form>
       @if (error()) {
@@ -103,7 +103,7 @@ import { InvoiceEditor } from './invoice-editor';
                   <td>{{ item.dueDate }}</td>
                   <td>{{ item.total | currency: item.currency : 'symbol' : '1.2-2' }}</td>
                   <td>{{ item.currency }}</td>
-                  <td><span class="badge">{{ item.lifecycle }}</span></td>
+                  <td><span class="badge">{{ item.deliveryStatus === 'Sent' ? 'Sent' : item.lifecycle }}</span></td>
                   <td>{{ item.updatedAtUtc | date: 'mediumDate' }}</td>
                 </tr>
               }
@@ -116,7 +116,7 @@ import { InvoiceEditor } from './invoice-editor';
               <div class="card-title">
                 <button class="row-link" type="button" (click)="edit(item)">
                   {{ item.invoiceNumber || item.clientName }}</button
-                ><span class="badge">{{ item.lifecycle }}</span>
+                ><span class="badge">{{ item.deliveryStatus === 'Sent' ? 'Sent' : item.lifecycle }}</span>
               </div>
               @if (item.invoiceNumber) { <p>{{ item.clientName }}</p> }
               <strong

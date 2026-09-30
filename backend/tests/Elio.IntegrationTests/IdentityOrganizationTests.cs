@@ -35,13 +35,14 @@ public sealed class PostgresFactory : WebApplicationFactory<Program>, IAsyncLife
     private readonly string schema = "elio_test_" + Guid.NewGuid().ToString("N");
     private string connection = "";
     public CapturedAccountEmail Mail { get; } = new();
+    public CapturedInvoiceEmail InvoiceMail { get; } = new();
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Database", connection);
         builder.UseSetting("Account:RequestsPerMinute", "1000");
         builder.ConfigureLogging(logging => logging.ClearProviders());
-        builder.ConfigureServices(services => { services.RemoveAll<IAccountEmailSender>(); services.AddSingleton<IAccountEmailSender>(Mail); });
+        builder.ConfigureServices(services => { services.RemoveAll<IAccountEmailSender>(); services.AddSingleton<IAccountEmailSender>(Mail); services.RemoveAll<Elio.Application.Invoices.IInvoiceEmailSender>(); services.AddSingleton<Elio.Application.Invoices.IInvoiceEmailSender>(InvoiceMail); });
     }
     public async Task InitializeAsync()
     {

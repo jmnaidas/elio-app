@@ -2,16 +2,18 @@ import { Component, inject, input, output, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { InvoiceRecord, InvoicesData } from './invoices-data';
 import { errorMessage } from '../../core/auth/session';
+import { InvoiceDelivery } from './invoice-delivery';
 
 @Component({
-  selector: 'app-finalized-invoice', imports: [CurrencyPipe, DatePipe],
+  selector: 'app-finalized-invoice', imports: [CurrencyPipe, DatePipe, InvoiceDelivery],
   styleUrl: './invoice-editor.scss',
   template: `
     <div class="editor-heading"><div><p class="eyebrow">INVOICES / FINALIZED</p><h2 tabindex="-1">{{ invoice().invoiceNumber }}</h2></div>
       <button class="secondary-button" type="button" (click)="closed.emit()">Back to invoices</button></div>
-    <div class="issued-actions"><span class="draft-badge">Finalized</span><p class="field-help">This invoice is locked. Its issued details cannot be edited.</p>
+    <div class="issued-actions"><span class="draft-badge">{{ sentAt() || invoice().deliveryStatus === 'Sent' ? 'Sent' : 'Finalized' }}</span><p class="field-help">This invoice is locked. Its issued details cannot be edited.</p>
       <button class="primary-button" type="button" (click)="download()" [disabled]="busy()">{{ busy() ? 'Preparing PDF…' : 'Download PDF' }}</button></div>
     @if (error()) { <p class="form-error" role="alert">{{ error() }}</p> }
+    <app-invoice-delivery [invoice]="invoice()" (sent)="sentAt.set($event)" />
     <article class="paper issued-paper" aria-label="Finalized invoice">
       <div class="paper-header"><strong>{{ invoice().sellerName }}</strong><span class="draft-badge">FINALIZED</span></div>
       <h2>Invoice</h2><h3>{{ invoice().invoiceNumber }}</h3><p class="field-help">{{ invoice().currency }}</p>
@@ -32,6 +34,7 @@ export class FinalizedInvoice {
   readonly invoice = input.required<InvoiceRecord>();
   readonly closed = output<void>();
   readonly busy = signal(false);
+  readonly sentAt = signal<string | null>(null);
   readonly error = signal('');
   private readonly data = inject(InvoicesData);
   async download() {

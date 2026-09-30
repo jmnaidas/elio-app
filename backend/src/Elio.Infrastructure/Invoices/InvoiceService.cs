@@ -17,9 +17,14 @@ public sealed class InvoiceService(ElioDbContext database, CatalogAccess access,
             .Where(x => x.OrganizationId == organization);
         if (!string.IsNullOrEmpty(request.Status) && request.Status != "all")
         {
-            if (request.Status is not ("draft" or "finalized")) throw new RequestFailure(400, "Choose draft, finalized, or all.");
-            var lifecycle = request.Status == "draft" ? InvoiceLifecycle.Draft : InvoiceLifecycle.Finalized;
-            query = query.Where(x => x.Lifecycle == lifecycle);
+            if (request.Status is not ("draft" or "finalized" or "sent")) throw new RequestFailure(400, "Choose draft, finalized, sent, or all.");
+            var sent = database.InvoiceDeliveries.Where(x => x.OrganizationId == organization && x.Status == InvoiceDeliveryStatus.Sent).Select(x => x.InvoiceId);
+            query = request.Status switch
+            {
+                "draft" => query.Where(x => x.Lifecycle == InvoiceLifecycle.Draft),
+                "sent" => query.Where(x => sent.Contains(x.Id)),
+                _ => query.Where(x => x.Lifecycle == InvoiceLifecycle.Finalized && !sent.Contains(x.Id))
+            };
         }
         if (!string.IsNullOrEmpty(request.Currency))
         {
@@ -38,12 +43,17 @@ public sealed class InvoiceService(ElioDbContext database, CatalogAccess access,
         var invoices = await query.OrderByDescending(x => x.UpdatedAtUtc).ThenBy(x => x.Id).ToListAsync();
         var ids = invoices.Where(x => x.Lifecycle == InvoiceLifecycle.Draft).Select(x => x.ClientId).Distinct().ToArray();
         var clientMap = await clients.Where(x => ids.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
-        return invoices.Select(x => Map(x, clientMap.GetValueOrDefault(x.ClientId))).ToArray();
+        var invoiceIds = invoices.Select(x => x.Id).ToArray();
+        var sentAt = await database.InvoiceDeliveries.Where(x => x.OrganizationId == organization && invoiceIds.Contains(x.InvoiceId) && x.Status == InvoiceDeliveryStatus.Sent)
+            .GroupBy(x => x.InvoiceId).Select(x => new { Id = x.Key, SentAt = x.Max(d => d.SentAtUtc) }).ToDictionaryAsync(x => x.Id, x => x.SentAt);
+        return invoices.Select(x => WithDelivery(Map(x, clientMap.GetValueOrDefault(x.ClientId)), sentAt.GetValueOrDefault(x.Id))).ToArray();
     }
     public async Task<InvoiceDto> GetAsync(Guid id)
     {
         var invoice = await FindAsync(id);
-        return Map(invoice, invoice.Lifecycle == InvoiceLifecycle.Draft ? await ClientAsync(invoice.OrganizationId, invoice.ClientId) : null);
+        var sentAt = await database.InvoiceDeliveries.Where(x => x.OrganizationId == invoice.OrganizationId && x.InvoiceId == id && x.Status == InvoiceDeliveryStatus.Sent)
+            .MaxAsync(x => x.SentAtUtc);
+        return WithDelivery(Map(invoice, invoice.Lifecycle == InvoiceLifecycle.Draft ? await ClientAsync(invoice.OrganizationId, invoice.ClientId) : null), sentAt);
     }
     public async Task<InvoiceDto> CreateAsync(InvoiceRequest request)
     {
@@ -111,6 +121,7 @@ public sealed class InvoiceService(ElioDbContext database, CatalogAccess access,
         if (invoice.Lifecycle != "Finalized") throw new RequestFailure(409, "Finalize this invoice before downloading its official PDF.");
         return new(pdf.Generate(invoice), invoice.InvoiceNumber + ".pdf");
     }
+    private static InvoiceDto WithDelivery(InvoiceDto invoice, DateTimeOffset? sentAt) => invoice with { DeliveryStatus = sentAt.HasValue ? "Sent" : "NotSent", LastSentAtUtc = sentAt };
     private static DraftLine[] Lines(InvoiceRequest request) => request.Lines.Select(x =>
         new DraftLine(x.Id, x.ServiceId, x.Description, x.Quantity ?? 0, x.UnitPrice ?? -1)).ToArray();
     private async Task<Client> ValidateSources(Guid organization, InvoiceRequest request, Invoice? existing)

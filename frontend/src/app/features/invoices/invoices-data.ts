@@ -35,12 +35,18 @@ export interface InvoiceRecord extends Omit<InvoiceInput, 'notes' | 'paymentInst
   sellerName?: string | null;
   sellerTimeZone?: string | null;
   clientPhone?: string | null;
+  deliveryStatus?: 'NotSent' | 'Sent';
+  lastSentAtUtc?: string | null;
   subtotal: string;
   total: string;
   createdAtUtc: string;
   updatedAtUtc: string;
   version: string;
   lines: (InvoiceLineInput & { id: string; lineTotal: string; sortOrder: number })[];
+}
+export interface InvoiceDeliveryRecord {
+  id: string; recipientEmail: string; attemptedAtUtc: string; sentAtUtc: string | null;
+  status: 'Pending' | 'Sent' | 'Failed'; channel: string; failureCode: string | null;
 }
 @Injectable({ providedIn: 'root' })
 export class InvoicesData {
@@ -60,6 +66,12 @@ export class InvoicesData {
   }
   pdf(id: string) {
     return firstValueFrom(this.http.get(`${this.base}/invoices/${id}/pdf`, { responseType: 'blob' }));
+  }
+  deliveries(id: string) {
+    return firstValueFrom(this.http.get<InvoiceDeliveryRecord[]>(`${this.base}/invoices/${id}/deliveries`));
+  }
+  send(record: InvoiceRecord, recipientEmail: string) {
+    return this.session.mutate<InvoiceDeliveryRecord>(`/invoices/${record.id}/send`, { version: record.version, recipientEmail });
   }
   save(input: InvoiceInput, id?: string) {
     return this.session.mutate<InvoiceRecord>(

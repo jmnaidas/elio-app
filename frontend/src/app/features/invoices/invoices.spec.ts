@@ -11,6 +11,7 @@ import { FinalizedInvoice } from './finalized-invoice';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { HttpErrorResponse } from '@angular/common/http';
+import { InvoiceDelivery } from './invoice-delivery';
 
 const record: InvoiceRecord = {
   id: 'invoice-1',
@@ -48,6 +49,8 @@ function setup() {
     get: vi.fn().mockResolvedValue(record),
     save: vi.fn().mockResolvedValue({ ...record, version: 'v2' }),
     finalize: vi.fn().mockResolvedValue({ ...record, lifecycle: 'Finalized', invoiceNumber: 'INV-000001', sellerName: 'Issued studio', finalizedAtUtc: '2026-09-29T00:00:00Z', version: 'v3' }),
+    deliveries: vi.fn().mockResolvedValue([]),
+    send: vi.fn(),
     pdf: vi.fn().mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' })),
   };
   const clients = {
@@ -375,5 +378,76 @@ describe('Invoice finalization', () => {
     const fixture = TestBed.createComponent(InvoicesPage); await fixture.whenStable(); expect(fixture.nativeElement.textContent).toContain('Finalized');
     expect(fixture.nativeElement.textContent).toContain('INV-000001'); fixture.componentInstance.status = 'finalized'; await fixture.componentInstance.load();
     expect(data.list).toHaveBeenLastCalledWith('', '', 'finalized');
+  });
+});
+
+describe('invoice email delivery', () => {
+  const issued: InvoiceRecord = { ...record, lifecycle: 'Finalized', invoiceNumber: 'INV-000001', sellerName: 'Issued studio' };
+  const success = { id: 'delivery-1', recipientEmail: record.clientEmail, attemptedAtUtc: '2026-09-29T12:00:00Z', sentAtUtc: '2026-09-29T12:00:01Z', status: 'Sent', channel: 'development-capture', failureCode: null };
+  const show = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
+  const close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close');
+  beforeAll(() => {
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: function(this: HTMLDialogElement) { this.setAttribute('open', ''); } });
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function(this: HTMLDialogElement) { this.removeAttribute('open'); } });
+  });
+  afterAll(() => {
+    if (show) Object.defineProperty(HTMLDialogElement.prototype, 'showModal', show); else Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal');
+    if (close) Object.defineProperty(HTMLDialogElement.prototype, 'close', close); else Reflect.deleteProperty(HTMLDialogElement.prototype, 'close');
+  });
+  async function delivery(invoice = issued) {
+    const { data } = setup(); data.send.mockResolvedValue(success);
+    const fixture = TestBed.createComponent(InvoiceDelivery); fixture.componentRef.setInput('invoice', invoice); await fixture.whenStable();
+    return { data, fixture, page: fixture.componentInstance };
+  }
+  it('does not offer sending for a Draft', async () => {
+    const { fixture } = await editor(record);
+    expect(fixture.nativeElement.querySelector('app-invoice-delivery')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Send invoice');
+  });
+  it('shows a labeled confirmation with snapshot recipient, number and total and supports cancel', async () => {
+    const { fixture, page, data } = await delivery(); page.confirm(); await fixture.whenStable();
+    const dialog: HTMLDialogElement = fixture.nativeElement.querySelector('dialog');
+    expect(dialog.open).toBe(true); expect(dialog.getAttribute('aria-labelledby')).toBe('send-title');
+    expect(dialog.textContent).toContain('INV-000001'); expect(dialog.textContent).toContain('15.02');
+    expect((dialog.querySelector('input') as HTMLInputElement).value).toBe(record.clientEmail);
+    expect(dialog.querySelector('label')?.htmlFor).toBe('send-recipient');
+    page.cancel(); await fixture.whenStable(); expect(dialog.open).toBe(false); expect(data.send).not.toHaveBeenCalled();
+    page.confirm(); await fixture.whenStable(); page.onCancel(new Event('cancel')); expect(page.confirming()).toBe(false);
+  });
+  it('prevents duplicate sends and dismissal while busy, then shows successful history and resend', async () => {
+    const { fixture, page, data } = await delivery(); let complete!: (value: typeof success) => void;
+    data.send.mockImplementation(() => new Promise(resolve => complete = resolve));
+    page.confirm(); await fixture.whenStable(); const sending = page.send(); await page.send();
+    expect(data.send).toHaveBeenCalledTimes(1); const escape = new Event('cancel', { cancelable: true }); page.onCancel(escape); expect(escape.defaultPrevented).toBe(true);
+    await fixture.whenStable(); expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(true);
+    data.deliveries.mockResolvedValue([success]); complete(success); await sending; await fixture.whenStable();
+    expect(page.wasSent()).toBe(true); expect(fixture.nativeElement.textContent).toContain('Resend invoice');
+    expect(fixture.nativeElement.textContent).toContain('Successful'); expect(fixture.nativeElement.textContent).toContain('No external email was sent.');
+    expect(fixture.nativeElement.querySelector('dialog').open).toBe(false);
+  });
+  it('shows failed attempts without claiming the invoice was sent and permits retry', async () => {
+    const { fixture, page, data } = await delivery(); data.send.mockRejectedValue(new HttpErrorResponse({ status: 503, error: { title: 'Invoice delivery failed.' } }));
+    data.deliveries.mockResolvedValue([{ ...success, status: 'Failed', sentAtUtc: null, failureCode: 'delivery_failed' }]);
+    page.confirm(); await fixture.whenStable(); await page.send(); await fixture.whenStable();
+    expect(page.wasSent()).toBe(false); expect(fixture.nativeElement.textContent).toContain('Invoice delivery failed.');
+    expect(fixture.nativeElement.textContent).toContain('Send invoice'); expect(fixture.nativeElement.textContent).toContain('Failed');
+  });
+  it('uses an override only for that attempt and resets the next confirmation to the snapshot email', async () => {
+    const { fixture, page, data } = await delivery({ ...issued, deliveryStatus: 'Sent', lastSentAtUtc: success.sentAtUtc });
+    page.confirm(); await fixture.whenStable(); page.recipient = 'override@example.test'; await page.send();
+    expect(data.send).toHaveBeenCalledWith(expect.objectContaining({ clientEmail: record.clientEmail }), 'override@example.test');
+    page.confirm(); await fixture.whenStable(); expect(page.recipient).toBe(record.clientEmail); expect(page.wasSent()).toBe(true);
+  });
+  it('reports history loading failures and blocks sending while an unresolved attempt exists', async () => {
+    const { fixture, page, data } = await delivery(); data.deliveries.mockRejectedValue(new Error('unavailable')); await page.load(); await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Retry history');
+    data.deliveries.mockResolvedValue([{ ...success, status: 'Pending', sentAtUtc: null }]); await page.load(); page.confirm();
+    expect(page.confirming()).toBe(false); expect(page.wasSent()).toBe(false);
+  });
+  it('lists Sent invoices separately and sends the status filter to the API', async () => {
+    const { data } = setup(); data.list.mockResolvedValue([{ ...issued, deliveryStatus: 'Sent' }]);
+    const fixture = TestBed.createComponent(InvoicesPage); await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.badge')?.textContent).toContain('Sent');
+    fixture.componentInstance.status = 'sent'; await fixture.componentInstance.load(); expect(data.list).toHaveBeenLastCalledWith('', '', 'sent');
   });
 });
