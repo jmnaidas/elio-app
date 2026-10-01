@@ -12,6 +12,7 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { InvoiceDelivery } from './invoice-delivery';
+import { ReceivablesData } from '../receivables/receivables-data';
 
 const record: InvoiceRecord = {
   id: 'invoice-1',
@@ -88,6 +89,7 @@ function setup() {
   TestBed.configureTestingModule({
     providers: [
       { provide: InvoicesData, useValue: data },
+      { provide: ReceivablesData, useValue: { get: vi.fn().mockResolvedValue({ summary: { invoiceId: record.id, invoiceNumber: 'INV-000001', currency: 'PHP', total: '15.02', amountPaid: '0', balanceDue: '15.02', paymentStatus: 'Unpaid' }, payments: [] }) } },
       { provide: ClientsData, useValue: clients },
       { provide: ServicesData, useValue: services },
       {

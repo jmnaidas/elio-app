@@ -47,6 +47,11 @@ export const routes: Routes = [
           import('./features/invoices/invoices-page').then((m) => m.InvoicesPage),
       },
       {
+        path: 'receivables/:id',
+        title: 'Receivable · ELIO',
+        loadComponent: () => import('./features/receivables/receivables-page').then((m) => m.ReceivablesPage),
+      },
+      {
         path: 'receivables',
         title: 'Receivables · ELIO',
         loadComponent: () =>

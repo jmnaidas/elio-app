@@ -74,7 +74,7 @@ public sealed class ApiTests : IClassFixture<ApiFactory>
         using var scope = factory.Services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<ElioDbContext>();
         var names = database.Model.GetEntityTypes().Select(x => x.ClrType.Name).ToArray();
-        Assert.Equal(15, names.Length);
+        Assert.Equal(16, names.Length);
         Assert.Contains("InvoiceDelivery", names);
         Assert.Contains("Organization", names);
         Assert.Contains("Membership", names);
@@ -82,7 +82,7 @@ public sealed class ApiTests : IClassFixture<ApiFactory>
         Assert.Contains("Service", names);
         Assert.Contains("Invoice", names);
         Assert.Contains("InvoiceLine", names);
-        Assert.DoesNotContain(names, x => x.Contains("Payment"));
+        Assert.Contains("InvoicePayment", names);
         var invoice = database.Model.FindEntityType(typeof(Elio.Domain.Invoices.Invoice))!;
         Assert.Contains("InvoiceSequence", names);
         Assert.NotNull(invoice.FindProperty("InvoiceNumber"));

@@ -1,0 +1,17 @@
+:host { display:block; min-width:0; }
+.financial { background:white; border:1px solid #dedee3; border-radius:8px; padding:1.25rem; margin:1.5rem 0; }
+h2 { margin:0 0 1rem; } h3 { margin:1.25rem 0 .75rem; } p { overflow-wrap:anywhere; line-height:1.5; }
+.financial-heading, .actions { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+.financial-heading h3 { margin:0; } .badge { border-radius:4px; padding:.3rem .5rem; background:#edf3d0; }
+.figures { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin:.75rem 0; }
+.figures strong { display:block; font-size:1.15rem; margin-top:.3rem; }
+.payment { border-top:1px solid #e5e5e8; padding:1rem 0; } .payment p { margin:.35rem 0; } .notes { white-space:pre-wrap; }
+.field-help { color:#66666e; font-size:.85rem; }
+.actions .primary-button, .financial .primary-button { margin:0; }
+.secondary-button { border:1px solid #dedee3; border-radius:6px; padding:.8rem 1rem; color:inherit; background:white; font:inherit; cursor:pointer; }
+button:disabled { opacity:.65; cursor:wait; }
+dialog { width:calc(100% - 2rem); max-width:520px; max-height:calc(100dvh - 2rem); overflow:auto; box-sizing:border-box; padding:1.5rem; border:1px solid #dedee3; border-radius:12px; color:inherit; }
+dialog::backdrop { background:rgba(30,30,40,.35); }
+fieldset { border:0; padding:0; margin:0; min-width:0; }
+label { display:block; margin:1rem 0 .4rem; } input,select,textarea { width:100%; box-sizing:border-box; padding:.7rem; border:1px solid #dedee3; border-radius:6px; color:inherit; background:white; font:inherit; min-width:0; }
+@media(max-width:600px) { .figures { grid-template-columns:1fr; gap:0; } .figures p { margin:.4rem 0; } dialog { padding:1rem; } }

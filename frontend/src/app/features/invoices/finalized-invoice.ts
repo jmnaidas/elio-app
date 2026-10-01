@@ -3,9 +3,10 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { InvoiceRecord, InvoicesData } from './invoices-data';
 import { errorMessage } from '../../core/auth/session';
 import { InvoiceDelivery } from './invoice-delivery';
+import { InvoicePayments } from '../receivables/invoice-payments';
 
 @Component({
-  selector: 'app-finalized-invoice', imports: [CurrencyPipe, DatePipe, InvoiceDelivery],
+  selector: 'app-finalized-invoice', imports: [CurrencyPipe, DatePipe, InvoiceDelivery, InvoicePayments],
   styleUrl: './invoice-editor.scss',
   template: `
     <div class="editor-heading"><div><p class="eyebrow">INVOICES / FINALIZED</p><h2 tabindex="-1">{{ invoice().invoiceNumber }}</h2></div>
@@ -14,6 +15,7 @@ import { InvoiceDelivery } from './invoice-delivery';
       <button class="primary-button" type="button" (click)="download()" [disabled]="busy()">{{ busy() ? 'Preparing PDF…' : 'Download PDF' }}</button></div>
     @if (error()) { <p class="form-error" role="alert">{{ error() }}</p> }
     <app-invoice-delivery [invoice]="invoice()" (sent)="sentAt.set($event)" />
+    <app-invoice-payments [invoiceId]="invoice().id" />
     <article class="paper issued-paper" aria-label="Finalized invoice">
       <div class="paper-header"><strong>{{ invoice().sellerName }}</strong><span class="draft-badge">FINALIZED</span></div>
       <h2>Invoice</h2><h3>{{ invoice().invoiceNumber }}</h3><p class="field-help">{{ invoice().currency }}</p>

@@ -4,7 +4,7 @@
 
 ELIO — Exceptions · Ledger · Invoicing · Operations — is an invoicing and receivables workspace for small service businesses.
 
-**Status: Phase 5 — Invoice Delivery & Lifecycle.** Finalized invoices support confirmed send/resend with immutable PDF attachments, audited delivery attempts and Sent filtering. Development captures mail locally; production fails closed until a real provider is configured. Phase 0–4 behavior is preserved. Payments and receivables remain future work.
+**Status: Phase 6 — Receivables & Payment Recording.** Issued invoices expose authoritative balances, immutable manual payment history and Unpaid/Partially Paid/Paid financial states. Receivables supports search, filters and responsive payment entry. Invoice issuance, delivery and historical PDFs remain unchanged. Payment gateways, reversals and reminders remain future work.
 
 ## Stack
 
@@ -133,7 +133,7 @@ Identity/organization integration tests require real PostgreSQL. They use `ELIO_
 
 The API composes Application and Infrastructure. Application references Domain; Infrastructure references Application. Domain has no external dependencies. This is one application, not multiple services. Native EF Core, ASP.NET DI and Angular routing are used without custom repository or messaging frameworks.
 
-See [architecture decisions](docs/architecture.md), [Phase 1 details](docs/identity-and-organization.md), [Clients and Services](docs/clients-and-services.md), [Draft Invoice Engine](docs/invoice-engine.md), [Invoice Finalization + PDF](docs/invoice-finalization.md), [Invoice Delivery](docs/invoice-delivery.md), and [local infrastructure](infrastructure/README.md). ELIO uses Identity HttpOnly cookies because this is a first-party browser application; there are no browser-stored JWTs. Every organization request validates a live membership. Apply all migrations, including InvoiceDelivery, using the existing migration command before using Phase 5.
+See [architecture decisions](docs/architecture.md), [Phase 1 details](docs/identity-and-organization.md), [Clients and Services](docs/clients-and-services.md), [Draft Invoice Engine](docs/invoice-engine.md), [Invoice Finalization + PDF](docs/invoice-finalization.md), [Invoice Delivery](docs/invoice-delivery.md), [Receivables and Payments](docs/receivables-and-payments.md), and [local infrastructure](infrastructure/README.md). ELIO uses Identity HttpOnly cookies because this is a first-party browser application; there are no browser-stored JWTs. Every organization request validates a live membership. Apply all migrations, including InvoicePayments, using the existing migration command before using Phase 6.
 
 ## Stop local services
 
