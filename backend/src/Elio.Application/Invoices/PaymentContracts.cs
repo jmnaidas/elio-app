@@ -4,13 +4,14 @@ namespace Elio.Application.Invoices;
 
 public sealed record PaymentRequest([Required] decimal? Amount, [Required] DateTimeOffset? ReceivedAtUtc,
     [Required] string Method, [MaxLength(160)] string? Reference = null, [MaxLength(2000)] string? Notes = null);
-public sealed record ReceivableQuery([MaxLength(160)] string? Search = null, string? Status = null, string? Currency = null);
+public sealed record ReceivableQuery([MaxLength(160)] string? Search = null, string? Status = null, string? Currency = null, string? DueState = null);
 [JsonNumberHandling(JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString)]
 public sealed record PaymentDto(Guid Id, decimal Amount, string Currency, DateTimeOffset ReceivedAtUtc,
     string Method, string? Reference, string? Notes, DateTimeOffset CreatedAtUtc, Guid CreatedBy);
 [JsonNumberHandling(JsonNumberHandling.WriteAsString | JsonNumberHandling.AllowReadingFromString)]
 public sealed record ReceivableDto(Guid InvoiceId, string InvoiceNumber, string ClientName, string Currency,
-    DateOnly IssueDate, DateOnly DueDate, decimal Total, decimal AmountPaid, decimal BalanceDue, string PaymentStatus, string DeliveryStatus);
+    DateOnly IssueDate, DateOnly DueDate, decimal Total, decimal AmountPaid, decimal BalanceDue, string PaymentStatus, string DeliveryStatus,
+    string DueState, int DaysOverdue, DateOnly AsOfDate, string TimeZone, string ClientEmail);
 public sealed record ReceivableDetail(ReceivableDto Summary, IReadOnlyList<PaymentDto> Payments);
 public interface IReceivableService
 {

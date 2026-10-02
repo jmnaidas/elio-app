@@ -6,11 +6,14 @@ using Elio.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 namespace Elio.Infrastructure.Invoices;
 
-public sealed class ReceivableService(ElioDbContext database, CatalogAccess access, ICurrentOrganization current) : IReceivableService
+public sealed class ReceivableService(ElioDbContext database, CatalogAccess access, ICurrentOrganization current, TimeProvider clock) : IReceivableService
 {
     public async Task<IReadOnlyList<ReceivableDto>> ListAsync(ReceivableQuery request)
     {
         var organization = await access.OrganizationAsync();
+        var calendar = await Calendar(organization);
+        if (!string.IsNullOrEmpty(request.DueState) && request.DueState is not ("all" or "NotDue" or "DueSoon" or "DueToday" or "Overdue"))
+            throw new RequestFailure(400, "Choose all, NotDue, DueSoon, DueToday, or Overdue.");
         if (!string.IsNullOrEmpty(request.Status) && request.Status is not ("all" or "Unpaid" or "PartiallyPaid" or "Paid"))
             throw new RequestFailure(400, "Choose Unpaid, PartiallyPaid, Paid, or all.");
         if (!string.IsNullOrEmpty(request.Currency) && request.Currency is not ("PHP" or "USD"))
@@ -29,8 +32,9 @@ public sealed class ReceivableService(ElioDbContext database, CatalogAccess acce
             Paid = database.InvoicePayments.Where(p => p.OrganizationId == organization && p.InvoiceId == x.Id).Sum(p => p.Amount),
             Sent = database.InvoiceDeliveries.Any(d => d.OrganizationId == organization && d.InvoiceId == x.Id && d.Status == InvoiceDeliveryStatus.Sent)
         }).ToListAsync();
-        return rows.Select(x => Map(x.Invoice, x.Paid, x.Sent))
-            .Where(x => string.IsNullOrEmpty(request.Status) || request.Status == "all" || request.Status == x.PaymentStatus).ToArray();
+        return rows.Select(x => Map(x.Invoice, x.Paid, x.Sent, calendar))
+            .Where(x => string.IsNullOrEmpty(request.Status) || request.Status == "all" || request.Status == x.PaymentStatus)
+            .Where(x => string.IsNullOrEmpty(request.DueState) || request.DueState == "all" || request.DueState == x.DueState).ToArray();
     }
     public async Task<ReceivableDetail> GetAsync(Guid id)
     {
@@ -66,14 +70,21 @@ public sealed class ReceivableService(ElioDbContext database, CatalogAccess acce
         var payments = await database.InvoicePayments.AsNoTracking().Where(x => x.OrganizationId == invoice.OrganizationId && x.InvoiceId == invoice.Id)
             .OrderByDescending(x => x.ReceivedAtUtc).ThenByDescending(x => x.CreatedAtUtc).ThenBy(x => x.Id).ToListAsync();
         var sent = await database.InvoiceDeliveries.AnyAsync(x => x.OrganizationId == invoice.OrganizationId && x.InvoiceId == invoice.Id && x.Status == InvoiceDeliveryStatus.Sent);
-        return new(Map(invoice, payments.Sum(x => x.Amount), sent), payments.Select(x => new PaymentDto(x.Id, x.Amount, x.Currency,
+        return new(Map(invoice, payments.Sum(x => x.Amount), sent, await Calendar(invoice.OrganizationId)), payments.Select(x => new PaymentDto(x.Id, x.Amount, x.Currency,
             x.ReceivedAtUtc, x.Method.ToString(), x.Reference, x.Notes, x.CreatedAtUtc, x.CreatedBy)).ToArray());
     }
-    private static ReceivableDto Map(Invoice invoice, decimal paid, bool sent)
+    private async Task<(DateOnly Today, string Zone)> Calendar(Guid organization)
+    {
+        var zone = await database.Organizations.Where(x => x.Id == organization).Select(x => x.TimeZone).SingleAsync();
+        return (DueSummary.BusinessDate(clock.GetUtcNow(), zone), zone);
+    }
+    private static ReceivableDto Map(Invoice invoice, decimal paid, bool sent, (DateOnly Today, string Zone) calendar)
     {
         var summary = PaymentSummary.Calculate(invoice.Total, paid);
+        var due = DueSummary.Calculate(invoice.DueDate, calendar.Today, summary.BalanceDue);
         return new(invoice.Id, invoice.InvoiceNumber!, invoice.IssuedClientName!, invoice.Currency, invoice.IssueDate, invoice.DueDate,
-            invoice.Total, summary.AmountPaid, summary.BalanceDue, summary.PaymentStatus, sent ? "Sent" : "NotSent");
+            invoice.Total, summary.AmountPaid, summary.BalanceDue, summary.PaymentStatus, sent ? "Sent" : "NotSent",
+            due.DueState, due.DaysOverdue, calendar.Today, calendar.Zone, invoice.IssuedClientEmail!);
     }
     private static void RequireIssued(Invoice invoice)
     {

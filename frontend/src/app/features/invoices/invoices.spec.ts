@@ -89,7 +89,7 @@ function setup() {
   TestBed.configureTestingModule({
     providers: [
       { provide: InvoicesData, useValue: data },
-      { provide: ReceivablesData, useValue: { get: vi.fn().mockResolvedValue({ summary: { invoiceId: record.id, invoiceNumber: 'INV-000001', currency: 'PHP', total: '15.02', amountPaid: '0', balanceDue: '15.02', paymentStatus: 'Unpaid' }, payments: [] }) } },
+      { provide: ReceivablesData, useValue: { reminders: vi.fn().mockResolvedValue([]), get: vi.fn().mockResolvedValue({ summary: { invoiceId: record.id, invoiceNumber: 'INV-000001', currency: 'PHP', total: '15.02', amountPaid: '0', balanceDue: '15.02', paymentStatus: 'Unpaid' }, payments: [] }) } },
       { provide: ClientsData, useValue: clients },
       { provide: ServicesData, useValue: services },
       {

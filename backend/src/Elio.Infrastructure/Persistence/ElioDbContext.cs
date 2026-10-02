@@ -16,6 +16,7 @@ public sealed class ElioDbContext(DbContextOptions<ElioDbContext> options) : Ide
     public DbSet<Elio.Domain.Invoices.InvoiceLine> InvoiceLines => Set<Elio.Domain.Invoices.InvoiceLine>();
     public DbSet<Elio.Domain.Invoices.InvoiceDelivery> InvoiceDeliveries => Set<Elio.Domain.Invoices.InvoiceDelivery>();
     public DbSet<Elio.Domain.Invoices.InvoicePayment> InvoicePayments => Set<Elio.Domain.Invoices.InvoicePayment>();
+    public DbSet<Elio.Domain.Invoices.InvoiceReminder> InvoiceReminders => Set<Elio.Domain.Invoices.InvoiceReminder>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

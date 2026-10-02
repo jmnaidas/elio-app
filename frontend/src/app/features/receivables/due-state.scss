@@ -1,0 +1,5 @@
+.due-state { font-weight:600; overflow-wrap:anywhere; }
+.overdue .due-state, .due-state.overdue { color:#9b3429; }
+tr.overdue { background:#fff8f5; }
+.record-card.overdue { border-left:3px solid #ba5847; }
+.toolbar { flex-wrap:wrap; }

@@ -3,9 +3,10 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { errorMessage } from '../../core/auth/session';
 import { lineCents } from '../invoices/invoice-calculations';
-import { paymentStatusLabel, ReceivableDetail, ReceivablesData } from './receivables-data';
+import { dueStateLabel, paymentStatusLabel, ReceivableDetail, ReceivablesData } from './receivables-data';
+import { InvoiceReminders } from './invoice-reminders';
 @Component({
-  selector: 'app-invoice-payments', imports: [CurrencyPipe, DatePipe, FormsModule], styleUrl: './payments.scss',
+  selector: 'app-invoice-payments', imports: [CurrencyPipe, DatePipe, FormsModule, InvoiceReminders], styleUrls: ['./payments.scss', './due-state.scss'],
   template: `
     <section class="financial" aria-label="Payment summary">
       <h2>Payments</h2>
@@ -13,7 +14,7 @@ import { paymentStatusLabel, ReceivableDetail, ReceivablesData } from './receiva
       @if (loadError()) { <p role="alert">{{ loadError() }} <button type="button" class="secondary-button" (click)="load()">Retry payments</button></p> }
       @if (detail(); as detail) {
         <div class="financial-heading"><h3>{{ detail.summary.invoiceNumber }}</h3><span class="badge">{{ label(detail.summary.paymentStatus) }}</span></div>
-        <div class="figures"><p>Total<strong>{{ detail.summary.total | currency:detail.summary.currency }}</strong></p>
+        <p [class.overdue]="detail.summary.dueState === 'Overdue'" class="due-state">{{ dueLabel(detail.summary.dueState) }}@if (detail.summary.daysOverdue > 0) { · {{ detail.summary.daysOverdue }} days overdue }</p><p>Due {{ detail.summary.dueDate }} · As of {{ detail.summary.asOfDate }} ({{ detail.summary.timeZone }})</p><div class="figures"><p>Total<strong>{{ detail.summary.total | currency:detail.summary.currency }}</strong></p>
           <p>Paid<strong>{{ detail.summary.amountPaid | currency:detail.summary.currency }}</strong></p>
           <p>Outstanding<strong>{{ detail.summary.balanceDue | currency:detail.summary.currency }}</strong></p></div>
         @if (detail.summary.paymentStatus !== 'Paid') { <button type="button" class="primary-button" (click)="open()" [disabled]="loading() || !!loadError() || busy()">Record payment</button> }
@@ -51,14 +52,14 @@ import { paymentStatusLabel, ReceivableDetail, ReceivablesData } from './receiva
             <button type="button" class="secondary-button" (click)="cancel()" [disabled]="busy()">Cancel</button></div>
         </form>
       } }
-    </dialog>
+    </dialog>@if (detail(); as detail) { <app-invoice-reminders [summary]="detail.summary" (refreshed)="load()" /> }
   `,
 })
 export class InvoicePayments {
   readonly invoiceId = input.required<string>();
   readonly detail = signal<ReceivableDetail | null>(null); readonly loading = signal(false); readonly busy = signal(false);
   readonly loadError = signal(''); readonly error = signal(''); readonly message = signal(''); readonly confirming = signal(false);
-  readonly confirmation = viewChild.required<ElementRef<HTMLDialogElement>>('confirmation'); readonly label = paymentStatusLabel;
+  readonly confirmation = viewChild.required<ElementRef<HTMLDialogElement>>('confirmation'); readonly label = paymentStatusLabel; readonly dueLabel = dueStateLabel;
   readonly methods = [{ value: 'BankTransfer', label: 'Bank transfer' }, { value: 'Cash', label: 'Cash' }, { value: 'Check', label: 'Check' }, { value: 'Card', label: 'Card' }, { value: 'EWallet', label: 'E-wallet' }, { value: 'Other', label: 'Other' }];
   private readonly data = inject(ReceivablesData); private readonly injector = inject(Injector);
   amount = ''; received = ''; method = ''; reference = ''; notes = '';

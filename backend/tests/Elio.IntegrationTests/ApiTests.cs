@@ -74,7 +74,7 @@ public sealed class ApiTests : IClassFixture<ApiFactory>
         using var scope = factory.Services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<ElioDbContext>();
         var names = database.Model.GetEntityTypes().Select(x => x.ClrType.Name).ToArray();
-        Assert.Equal(16, names.Length);
+        Assert.Equal(17, names.Length);
         Assert.Contains("InvoiceDelivery", names);
         Assert.Contains("Organization", names);
         Assert.Contains("Membership", names);
